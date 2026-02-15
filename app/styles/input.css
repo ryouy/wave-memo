@@ -1,16 +1,20 @@
 .textarea-clean {
-  width: 80vw;
-  max-width: 800px;
-  height: 10rem; /* 約160px */
+  /* 幅を狭めて折返しを短くする（約10文字程度に見えるように）
+     フォントを大きくして視認性を強調（約3倍）
+     overflow:hidden にして内部スクロールさせない */
+  width: 20ch;
+  max-width: 28ch;
+  height: 10rem; /* 表示領域は固定 */
   padding: 1.2rem;
-  font-size: 1.2rem;
+  font-size: 3.6rem; /* 3倍 (1.2rem -> 3.6rem) */
   color: #696969;
   background-color: transparent;
   border: none;
   outline: none;
   resize: none;
+  overflow: hidden; /* スクロールさせない */
   text-align: center;
-  line-height: 1.6;
+  line-height: 1.2;
   border-radius: 1rem;
 
   /* 👇 影を完全に削除 */
@@ -32,6 +36,6 @@
 /* レスポンシブ対応 */
 @media (min-width: 768px) {
   .textarea-clean {
-    width: 60vw;
+    width: 24ch;
   }
 }

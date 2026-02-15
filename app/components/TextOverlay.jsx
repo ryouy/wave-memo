@@ -7,57 +7,32 @@ export default function TextOverlay({ text, onDelete }) {
   const lineInfosRef = useRef([]);
   const animRef = useRef(null);
 
-  // n文字で折り返し（およそ7文字）
-  const wrapSize = 7;
+  // 固定でn文字ごとに折り返す（要求に合わせておおよそ10文字）
+  const wrapSize = 10;
 
-  const layoutLines = (ctx, maxWidth, paddingLeft, paddingTop, lineHeight) => {
+  const layoutLines = (_ctx, maxWidth, paddingLeft, paddingTop, lineHeight) => {
     const lines = [];
     const raw = text.replace(/\r/g, "");
 
-    let cur = "";
-    let curStart = 0;
-    let curWidth = 0;
-
-    const maxContentWidth = maxWidth - paddingLeft * 1.5; // 少し余白を取る
-
-    const pushLine = () => {
-      if (cur.length === 0) {
-        const y = paddingTop + (lines.length + 1) * lineHeight;
-        lines.push({ startIndex: curStart, length: 0, text: "", x: paddingLeft, y, w: 0, opacity: 1, fading: false });
-      } else {
-        const y = paddingTop + (lines.length + 1) * lineHeight;
-        lines.push({ startIndex: curStart, length: cur.length, text: cur, x: paddingLeft, y, w: Math.ceil(curWidth), opacity: 1, fading: false });
-      }
-      cur = "";
-      curWidth = 0;
-    };
-
-    for (let i = 0; i < raw.length; i++) {
-      const ch = raw[i];
-      if (ch === "\n") {
-        pushLine();
-        curStart = i + 1;
+    let index = 0;
+    while (index < raw.length) {
+      // 末尾の改行なら空行として扱う
+      if (raw[index] === "\n") {
+        lines.push({ startIndex: index, length: 0, text: "", x: paddingLeft, y: paddingTop + (lines.length + 1) * lineHeight, w: 0, opacity: 1, fading: false });
+        index += 1;
         continue;
       }
 
-      const m = ctx.measureText(ch);
-      const w = Math.ceil(m.width);
-
-      if (cur.length === 0) {
-        cur = ch;
-        curWidth = w;
-      } else if (curWidth + w > maxContentWidth) {
-        pushLine();
-        curStart = i;
-        cur = ch;
-        curWidth = w;
-      } else {
-        cur += ch;
-        curWidth += w;
-      }
+      const chunk = raw.slice(index, index + wrapSize);
+      const y = paddingTop + (lines.length + 1) * lineHeight;
+      lines.push({ startIndex: index, length: chunk.length, text: chunk, x: paddingLeft, y, w: 0, opacity: 1, fading: false });
+      index += chunk.length;
     }
 
-    if (cur.length > 0 || raw.endsWith("\n")) pushLine();
+    // テキストが空の場合は一行の空行を用意
+    if (lines.length === 0) {
+      lines.push({ startIndex: 0, length: 0, text: "", x: paddingLeft, y: paddingTop + lineHeight, w: 0, opacity: 1, fading: false });
+    }
 
     return lines;
   };
@@ -69,7 +44,9 @@ export default function TextOverlay({ text, onDelete }) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.textBaseline = "alphabetic";
     const lines = lineInfosRef.current;
+    // 描画は「フェード中の行」のみ行い、textarea 本体の表示と重複しないようにする
     for (const line of lines) {
+      if (!line.fading) continue;
       ctx.globalAlpha = line.opacity;
       ctx.fillText(line.text, line.x, line.y);
     }
@@ -82,25 +59,29 @@ export default function TextOverlay({ text, onDelete }) {
     const ta = document.querySelector(".textarea-clean");
     if (!canvas || !ta) return;
 
-    canvas.width = ta.clientWidth;
-    canvas.height = ta.clientHeight;
-    canvas.style.width = `${ta.clientWidth}px`;
-    canvas.style.height = `${ta.clientHeight}px`;
+    // HiDPI 対応
+    const dpr = window.devicePixelRatio || 1;
+    const taRect = ta.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.floor(taRect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(taRect.height * dpr));
+    canvas.style.width = `${taRect.width}px`;
+    canvas.style.height = `${taRect.height}px`;
     canvas.style.pointerEvents = "none";
     const style = window.getComputedStyle(ta);
-    const font = `${style.fontSize} ${style.fontFamily}`;
+    const font = `${style.fontStyle || ""} ${style.fontWeight || ""} ${style.fontSize} ${style.fontFamily}`.trim();
     const paddingLeft = parseFloat(style.paddingLeft || 16);
     const paddingTop = parseFloat(style.paddingTop || 12);
-    const lineHeight =
-      parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.6;
+    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.6;
 
     const ctx = canvas.getContext("2d");
+    ctx.save();
+    ctx.scale(dpr, dpr);
     ctx.font = font;
     ctx.fillStyle = style.color || "#333";
 
     lineInfosRef.current = layoutLines(
       ctx,
-      canvas.width,
+      taRect.width,
       paddingLeft,
       paddingTop,
       lineHeight,
@@ -109,7 +90,10 @@ export default function TextOverlay({ text, onDelete }) {
     cancelAnimationFrame(animRef.current);
     animRef.current = requestAnimationFrame(draw);
 
-    return () => cancelAnimationFrame(animRef.current);
+    return () => {
+      cancelAnimationFrame(animRef.current);
+      ctx.restore();
+    };
   }, [text]);
 
   useEffect(() => {
@@ -125,7 +109,9 @@ export default function TextOverlay({ text, onDelete }) {
       // 波の y を基にターゲットとなる行を決める
       // サンプルから平均 y を取る
         const canvas = canvasRef.current;
-        const canvasRect = canvas.getBoundingClientRect();
+        const ta = document.querySelector(".textarea-clean");
+        if (!canvas || !ta) return;
+        const canvasRect = ta.getBoundingClientRect();
 
         // サンプルの平均Y（ページ座標）
         let avgY = samples.reduce((s, v) => s + v.y, 0) / samples.length;
@@ -134,7 +120,8 @@ export default function TextOverlay({ text, onDelete }) {
         let targetIndex = -1;
         for (let i = 0; i < lines.length; i++) {
           const ln = lines[i];
-          const lineGlobalY = canvasRect.top + ln.y;
+          // ln.y はキャンバス内の描画Y（ピクセル、CSS単位）なので、要素のtopとスクロールを考慮
+          const lineGlobalY = canvasRect.top + ln.y - ta.scrollTop;
           if (lineGlobalY >= avgY - 10 && lineGlobalY <= avgY + foam) {
             targetIndex = i;
             break;
@@ -145,16 +132,13 @@ export default function TextOverlay({ text, onDelete }) {
         targetIndex = 0;
       }
 
-      // 削除する行数は1か2（強度に応じて）
+      // 削除は常に最上行から1〜2行（上から順に消える仕様）
       const intensity = e?.detail?.intensity ?? 0.5;
-      const removeLines = Math.random() < 0.5 ? 1 : 2;
+      const removeLines = intensity > 0.75 ? 2 : 1;
       const toRemoveLineIndices = [];
-
-      // 「上の行から」なので targetIndex を上に倒す（上方向へ）
       for (let i = 0; i < removeLines; i++) {
-        const idx = Math.max(0, targetIndex - i);
-        if (idx < lines.length && !lines[idx].fading)
-          toRemoveLineIndices.push(idx);
+        const idx = i; // 上から順に
+        if (idx < lines.length && !lines[idx].fading) toRemoveLineIndices.push(idx);
       }
 
       if (!toRemoveLineIndices.length) return;
@@ -183,7 +167,22 @@ export default function TextOverlay({ text, onDelete }) {
       // 実際の文字削除はアニメが終わる頃に実行
       setTimeout(() => {
         if (removedCharIndices.length) {
-          onDelete && onDelete(removedCharIndices.sort((a, b) => b - a));
+          // デバッグ: どのインデックスが削除されるか確認
+          const asc = removedCharIndices.sort((a, b) => a - b);
+          console.log("TextOverlay -> requesting delete indices:", asc);
+
+          // もし先頭からの連続した範囲（プレフィックス）であれば、より確実に
+          // 削除できるようにプレフィックス削除命令を送る
+          const min = asc[0];
+          const max = asc[asc.length - 1];
+          const isPrefix = min === 0 && asc.length === max - min + 1;
+          if (isPrefix) {
+            const count = asc.length;
+            console.log("TextOverlay -> requesting removePrefix:", count);
+            onDelete && onDelete({ removePrefix: true, count, indices: asc });
+          } else {
+            onDelete && onDelete(asc.reverse());
+          }
         }
       }, 900);
     };

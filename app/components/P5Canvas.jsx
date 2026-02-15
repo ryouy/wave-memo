@@ -15,6 +15,7 @@ export default function P5Canvas() {
         let t = 0;
         let noiseTime = 0;
         let lastTrigger = 0;
+        let lastInterval = 0;
 
         p.setup = () => {
           p.createCanvas(window.innerWidth, 400).parent(sketchRef.current);
@@ -27,7 +28,8 @@ export default function P5Canvas() {
           // リアルな上下動オフセットを計算 (p.noise() を使用)
           // ===============================
           const noiseValue = p.noise(noiseTime);
-          const amplitude = 100;
+          // 波の上下振幅を大きく設定
+          const amplitude = 220;
           const verticalOffset = p.map(noiseValue, 0, 1, -amplitude, amplitude);
 
           // ===============================
@@ -81,29 +83,10 @@ export default function P5Canvas() {
           // うねりの時間 (全体の上下動の速度)
           noiseTime += 0.005;
 
-          // ランダムまたはノイズピークでイベント発火（ページ側でテキスト削除を行う）
+          // 一定間隔（4秒）で確実にイベントを発火させる
           const now = p.millis();
-          // ノイズが高いときにトリガー（連発防止のため2秒間隔）
-          if (noiseValue > 0.86 && now - lastTrigger > 2000) {
-            const intensity = p.map(noiseValue, 0.86, 1, 0.5, 1);
-            // サンプリングして軽量化した頂点配列を作る
-            const samples = [];
-            const rect = sketchRef.current?.getBoundingClientRect() || { top: 0, left: 0 };
-            for (let i = 0; i < waveVertices.length; i += 6) {
-              // ページ座標に変換して渡す
-              samples.push({ x: waveVertices[i].x + rect.left, y: waveVertices[i].y + rect.top });
-            }
-            window.dispatchEvent(
-              new CustomEvent("wave-pass", {
-                detail: { intensity, wave: { foamHeight, samples } },
-              }),
-            );
-            lastTrigger = now;
-          }
-
-          // 小さな確率でランダムに発火させる（海の不確定性表現）
-          if (p.random() < 0.001 && now - lastTrigger > 1000) {
-            const intensity = p.random(0.3, 0.8);
+          if (now - lastInterval > 4000) {
+            const intensity = p.map(noiseValue, 0, 1, 0.4, 1);
             const samples = [];
             const rect = sketchRef.current?.getBoundingClientRect() || { top: 0, left: 0 };
             for (let i = 0; i < waveVertices.length; i += 6) {
@@ -114,7 +97,7 @@ export default function P5Canvas() {
                 detail: { intensity, wave: { foamHeight, samples } },
               }),
             );
-            lastTrigger = now;
+            lastInterval = now;
           }
         };
 

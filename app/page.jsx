@@ -14,8 +14,17 @@ export default function Home() {
   }, [text]);
 
   const handleDelete = (indices) => {
-    if (!indices || !indices.length) return;
+    if (!indices) return;
+    // プレフィックス削除命令の場合
+    if (typeof indices === "object" && indices.removePrefix) {
+      const count = indices.count || 0;
+      console.log("Removing prefix count:", count);
+      setText((prev) => prev.slice(count));
+      return;
+    }
+    if (!Array.isArray(indices) || !indices.length) return;
     // indices は元の文字列内のインデックスの配列
+    console.log("Deleting char indices:", indices);
     setText((prev) => {
       const arr = prev.split("");
       // 降順で削除してインデックスずれを防ぐ
@@ -25,6 +34,7 @@ export default function Home() {
         .forEach((i) => {
           if (i >= 0 && i < arr.length) arr.splice(i, 1);
         });
+      console.log("Resulting text:", arr.join(""));
       return arr.join("");
     });
   };
@@ -69,8 +79,37 @@ export default function Home() {
       {/* mainがjustify-centerなので、このdivが画面の上下中央に来る。
         mt-24 を指定して「中央より少し下」に調整する。
       */}
-      <div className="mt-24">
+      <div className="mt-24 w-full flex justify-center">
         <div style={{ position: "relative", display: "inline-block" }}>
+          {/* 左右に岩風オブジェクトを配置（装飾） */}
+          <div style={{ position: "absolute", left: -140, top: "15%", zIndex: 0, pointerEvents: "none", transform: "rotate(-6deg)" }}>
+            <svg width="240" height="240" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="gL" x1="0" x2="1">
+                  <stop offset="0%" stopColor="#8f6f52" />
+                  <stop offset="100%" stopColor="#c6a882" />
+                </linearGradient>
+                <filter id="s1" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="2" dy="6" stdDeviation="10" floodColor="#000" floodOpacity="0.25" />
+                </filter>
+              </defs>
+              <path filter="url(#s1)" d="M20 240 C60 140 140 120 180 160 C220 200 260 180 280 140 L280 260 L20 260 Z" fill="url(#gL)" />
+            </svg>
+          </div>
+          <div style={{ position: "absolute", right: -140, top: "15%", zIndex: 0, pointerEvents: "none", transform: "rotate(6deg)" }}>
+            <svg width="240" height="240" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="gR" x1="0" x2="1">
+                  <stop offset="0%" stopColor="#7f5f43" />
+                  <stop offset="100%" stopColor="#b89266" />
+                </linearGradient>
+                <filter id="s2" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="-2" dy="6" stdDeviation="10" floodColor="#000" floodOpacity="0.25" />
+                </filter>
+              </defs>
+              <path filter="url(#s2)" d="M280 240 C240 140 160 120 120 160 C80 200 40 180 20 140 L20 260 L280 260 Z" fill="url(#gR)" />
+            </svg>
+          </div>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -78,7 +117,7 @@ export default function Home() {
             className="textarea-clean"
             style={{ position: "relative", zIndex: 1 }}
           />
-          <div style={{ position: "absolute", left: 0, top: 0, zIndex: 2 }}>
+          <div style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, zIndex: 2, pointerEvents: "none", display: "flex", justifyContent: "center", alignItems: "center" }}>
             <TextOverlay text={text} onDelete={handleDelete} />
           </div>
         </div>
