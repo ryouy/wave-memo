@@ -12,27 +12,53 @@ export default function TextOverlay({ text, onDelete }) {
 
   const layoutLines = (ctx, maxWidth, paddingLeft, paddingTop, lineHeight) => {
     const lines = [];
-    // テキストを行に分割（wrapSizeごと）
     const raw = text.replace(/\r/g, "");
-    let idx = 0;
-    for (let i = 0; i < raw.length; i += wrapSize) {
-      const chunk = raw.slice(i, i + wrapSize);
-      const startIndex = i;
-      const w = Math.ceil(ctx.measureText(chunk).width);
-      const x = paddingLeft;
-      const y = paddingTop + (lines.length + 1) * lineHeight;
-      lines.push({
-        startIndex,
-        length: chunk.length,
-        text: chunk,
-        x,
-        y,
-        w,
-        opacity: 1,
-        fading: false,
-      });
-      idx += chunk.length;
+
+    let cur = "";
+    let curStart = 0;
+    let curWidth = 0;
+
+    const maxContentWidth = maxWidth - paddingLeft * 1.5; // 少し余白を取る
+
+    const pushLine = () => {
+      if (cur.length === 0) {
+        const y = paddingTop + (lines.length + 1) * lineHeight;
+        lines.push({ startIndex: curStart, length: 0, text: "", x: paddingLeft, y, w: 0, opacity: 1, fading: false });
+      } else {
+        const y = paddingTop + (lines.length + 1) * lineHeight;
+        lines.push({ startIndex: curStart, length: cur.length, text: cur, x: paddingLeft, y, w: Math.ceil(curWidth), opacity: 1, fading: false });
+      }
+      cur = "";
+      curWidth = 0;
+    };
+
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i];
+      if (ch === "\n") {
+        pushLine();
+        curStart = i + 1;
+        continue;
+      }
+
+      const m = ctx.measureText(ch);
+      const w = Math.ceil(m.width);
+
+      if (cur.length === 0) {
+        cur = ch;
+        curWidth = w;
+      } else if (curWidth + w > maxContentWidth) {
+        pushLine();
+        curStart = i;
+        cur = ch;
+        curWidth = w;
+      } else {
+        cur += ch;
+        curWidth += w;
+      }
     }
+
+    if (cur.length > 0 || raw.endsWith("\n")) pushLine();
+
     return lines;
   };
 
@@ -98,12 +124,22 @@ export default function TextOverlay({ text, onDelete }) {
 
       // 波の y を基にターゲットとなる行を決める
       // サンプルから平均 y を取る
-      let avgY = samples.reduce((s, v) => s + v.y, 0) / samples.length;
+        const canvas = canvasRef.current;
+        const canvasRect = canvas.getBoundingClientRect();
 
-      // find first line whose y is near avgY
-      let targetIndex = lines.findIndex(
-        (ln) => ln.y >= avgY - 10 && ln.y <= avgY + foam,
-      );
+        // サンプルの平均Y（ページ座標）
+        let avgY = samples.reduce((s, v) => s + v.y, 0) / samples.length;
+
+        // 各行のページ座標Yを計算して、avgY と近い行を探す
+        let targetIndex = -1;
+        for (let i = 0; i < lines.length; i++) {
+          const ln = lines[i];
+          const lineGlobalY = canvasRect.top + ln.y;
+          if (lineGlobalY >= avgY - 10 && lineGlobalY <= avgY + foam) {
+            targetIndex = i;
+            break;
+          }
+        }
       if (targetIndex === -1) {
         // 見つからなければ上の行（0番）をターゲットにする
         targetIndex = 0;

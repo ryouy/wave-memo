@@ -88,8 +88,10 @@ export default function P5Canvas() {
             const intensity = p.map(noiseValue, 0.86, 1, 0.5, 1);
             // サンプリングして軽量化した頂点配列を作る
             const samples = [];
+            const rect = sketchRef.current?.getBoundingClientRect() || { top: 0, left: 0 };
             for (let i = 0; i < waveVertices.length; i += 6) {
-              samples.push({ x: waveVertices[i].x, y: waveVertices[i].y });
+              // ページ座標に変換して渡す
+              samples.push({ x: waveVertices[i].x + rect.left, y: waveVertices[i].y + rect.top });
             }
             window.dispatchEvent(
               new CustomEvent("wave-pass", {
@@ -103,8 +105,9 @@ export default function P5Canvas() {
           if (p.random() < 0.001 && now - lastTrigger > 1000) {
             const intensity = p.random(0.3, 0.8);
             const samples = [];
+            const rect = sketchRef.current?.getBoundingClientRect() || { top: 0, left: 0 };
             for (let i = 0; i < waveVertices.length; i += 6) {
-              samples.push({ x: waveVertices[i].x, y: waveVertices[i].y });
+              samples.push({ x: waveVertices[i].x + rect.left, y: waveVertices[i].y + rect.top });
             }
             window.dispatchEvent(
               new CustomEvent("wave-pass", {
