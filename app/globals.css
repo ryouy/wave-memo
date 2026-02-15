@@ -2,11 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+nextjs-portal {
+  display: none;
+}
+
 html,
 body {
-  nextjs-portal {
-    display: none;
-  }
   margin: 0;
   padding: 0;
   font-family: "Noto Sans JP", sans-serif;

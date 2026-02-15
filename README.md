@@ -2,11 +2,36 @@
 
 Wave Memo is a Next.js prototype built around a simple idea:
 
-Text should not always remain.
+> **Text should not always remain.**
 
-Inspired by waves erasing writing on the shore, Wave Memo gently removes what you write. At fixed intervals, a wave arrives. The top line fades away. The process repeats until nothing remains.
+Inspired by waves erasing writing on the shore, Wave Memo gently removes what you write.
+At fixed intervals, a wave arrives.
+The top line fades away.
+The process repeats until nothing remains.
 
-It is a memo experience designed around impermanence.
+It is a memo experience designed around **impermanence**.
+
+---
+
+## A Quiet Choice
+
+Would you like to let your thoughts drift away with the waves?
+
+Wave Memo offers two intentional paths:
+
+### Do not record
+
+Random waves arrive and quietly wash your thoughts away.
+
+### Record
+
+If a thought should not be erased, preserve it —
+not through built-in storage, but by intentionally taking a screenshot.
+
+---
+
+**Impermanence is the default.**
+**Preservation is a conscious act.**
 
 ---
 
