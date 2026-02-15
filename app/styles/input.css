@@ -1,0 +1,37 @@
+.textarea-clean {
+  width: 80vw;
+  max-width: 800px;
+  height: 10rem; /* 約160px */
+  padding: 1.2rem;
+  font-size: 1.2rem;
+  color: #696969;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  text-align: center;
+  line-height: 1.6;
+  border-radius: 1rem;
+
+  /* 👇 影を完全に削除 */
+  box-shadow: none;
+}
+
+.textarea-clean::placeholder {
+  color: #2d2d2d;
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.textarea-clean:focus {
+  outline: none;
+  box-shadow: none;
+  transition: none;
+}
+
+/* レスポンシブ対応 */
+@media (min-width: 768px) {
+  .textarea-clean {
+    width: 60vw;
+  }
+}

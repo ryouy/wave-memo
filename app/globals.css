@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  nextjs-portal {
+    display: none;
+  }
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: "Noto Sans JP", sans-serif;
+  background: linear-gradient(to bottom, #240775, #f98035, #fefbf3, #f7d178);
+}
