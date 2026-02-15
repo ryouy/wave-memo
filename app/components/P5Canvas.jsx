@@ -122,5 +122,60 @@ export default function P5Canvas() {
     };
   }, []);
 
-  return <div ref={sketchRef} className="w-full h-[400px]" />;
+  return (
+    <div ref={sketchRef} className="relative w-full h-[400px]">
+      <img
+        src="/boat.png"
+        alt="boat"
+        className="pointer-events-none absolute top-[48%] w-[90px] sm:w-[110px] md:w-[130px] drop-shadow-[0_6px_10px_rgba(0,0,0,0.25)]"
+        style={{ animation: "boat-drift 28s linear infinite" }}
+      />
+      <img
+        src="/crab.png"
+        alt="crab"
+        className="pointer-events-none absolute left-1/2 w-[60px] sm:w-[70px] md:w-[80px] drop-shadow-[0_4px_8px_rgba(0,0,0,0.2)]"
+        style={{
+          bottom: "10%",
+          animation: "crab-walk 12s ease-in-out infinite",
+        }}
+      />
+      <style jsx global>{`
+        @keyframes boat-drift {
+          0% {
+            transform: translate(-50%, -50%) translateX(120vw);
+            opacity: 0;
+          }
+          6% {
+            opacity: 1;
+          }
+          70% {
+            transform: translate(-50%, -50%) translateX(-20vw);
+            opacity: 1;
+          }
+          85% {
+            transform: translate(-50%, -50%) translateX(-20vw);
+            opacity: 1;
+          }
+          86% {
+            opacity: 0;
+          }
+          100% {
+            transform: translate(-50%, -50%) translateX(120vw);
+            opacity: 0;
+          }
+        }
+        @keyframes crab-walk {
+          0% {
+            transform: translateX(-35vw);
+          }
+          50% {
+            transform: translateX(35vw);
+          }
+          100% {
+            transform: translateX(-35vw);
+          }
+        }
+      `}</style>
+    </div>
+  );
 }

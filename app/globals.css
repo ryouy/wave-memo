@@ -12,4 +12,41 @@ body {
   padding: 0;
   font-family: "Noto Sans JP", sans-serif;
   background: linear-gradient(to bottom, #240775, #f98035, #fefbf3, #f7d178);
+  overflow-x: hidden;
+}
+
+@keyframes boat-drift {
+  0% {
+    left: 110%;
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  70% {
+    left: -20%;
+    opacity: 1;
+  }
+  82% {
+    left: -20%;
+    opacity: 1;
+  }
+  83% {
+    opacity: 0;
+  }
+  84% {
+    left: 110%;
+    opacity: 0;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: 110%;
+    opacity: 1;
+  }
+}
+
+.boat-drift {
+  animation: boat-drift 28s linear infinite;
 }
