@@ -20,7 +20,7 @@ function LeftRock() {
     >
       {showImg ? (
         <img
-          src="/rock-left.svg"
+          src="/rock-left.png"
           alt="rock left"
           width={240}
           height={240}
@@ -74,7 +74,7 @@ function RightRock() {
     >
       {showImg ? (
         <img
-          src="/rock-right.svg"
+          src="/rock-right.png"
           alt="rock right"
           width={240}
           height={240}
