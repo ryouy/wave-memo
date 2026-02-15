@@ -11,7 +11,7 @@ function LeftRock() {
     <div
       style={{
         position: "absolute",
-        left: -140,
+        left: -340,
         top: "15%",
         zIndex: 0,
         pointerEvents: "none",
@@ -22,8 +22,8 @@ function LeftRock() {
         <img
           src="/rock-left.png"
           alt="rock left"
-          width={240}
-          height={240}
+          width={340}
+          height={340}
           onError={() => setShowImg(false)}
         />
       ) : (
@@ -65,7 +65,7 @@ function RightRock() {
     <div
       style={{
         position: "absolute",
-        right: -140,
+        right: -340,
         top: "15%",
         zIndex: 0,
         pointerEvents: "none",
@@ -76,8 +76,8 @@ function RightRock() {
         <img
           src="/rock-right.png"
           alt="rock right"
-          width={240}
-          height={240}
+          width={340}
+          height={340}
           onError={() => setShowImg(false)}
         />
       ) : (
@@ -195,7 +195,7 @@ export default function Home() {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="波のそばで、想いを綴ってください..."
+            placeholder="波に想いを綴ってください..."
             className="textarea-clean"
             style={{ position: "relative", zIndex: 1 }}
           />

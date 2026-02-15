@@ -18,7 +18,7 @@ export default function P5Canvas() {
         let lastInterval = 0;
 
         p.setup = () => {
-          p.createCanvas(window.innerWidth, 400).parent(sketchRef.current);
+          p.createCanvas(window.innerWidth, 700).parent(sketchRef.current);
         };
 
         p.draw = () => {
