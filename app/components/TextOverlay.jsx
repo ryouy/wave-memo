@@ -18,20 +18,47 @@ export default function TextOverlay({ text, onDelete }) {
     while (index < raw.length) {
       // 末尾の改行なら空行として扱う
       if (raw[index] === "\n") {
-        lines.push({ startIndex: index, length: 0, text: "", x: paddingLeft, y: paddingTop + (lines.length + 1) * lineHeight, w: 0, opacity: 1, fading: false });
+        lines.push({
+          startIndex: index,
+          length: 0,
+          text: "",
+          x: paddingLeft,
+          y: paddingTop + (lines.length + 1) * lineHeight,
+          w: 0,
+          opacity: 1,
+          fading: false,
+        });
         index += 1;
         continue;
       }
 
       const chunk = raw.slice(index, index + wrapSize);
       const y = paddingTop + (lines.length + 1) * lineHeight;
-      lines.push({ startIndex: index, length: chunk.length, text: chunk, x: paddingLeft, y, w: 0, opacity: 1, fading: false });
+      lines.push({
+        startIndex: index,
+        length: chunk.length,
+        text: chunk,
+        x: paddingLeft,
+        y,
+        w: 0,
+        opacity: 1,
+        fading: false,
+      });
       index += chunk.length;
     }
 
     // テキストが空の場合は一行の空行を用意
     if (lines.length === 0) {
-      lines.push({ startIndex: 0, length: 0, text: "", x: paddingLeft, y: paddingTop + lineHeight, w: 0, opacity: 1, fading: false });
+      lines.push({
+        startIndex: 0,
+        length: 0,
+        text: "",
+        x: paddingLeft,
+        y: paddingTop + lineHeight,
+        w: 0,
+        opacity: 1,
+        fading: false,
+      });
     }
 
     return lines;
@@ -68,10 +95,12 @@ export default function TextOverlay({ text, onDelete }) {
     canvas.style.height = `${taRect.height}px`;
     canvas.style.pointerEvents = "none";
     const style = window.getComputedStyle(ta);
-    const font = `${style.fontStyle || ""} ${style.fontWeight || ""} ${style.fontSize} ${style.fontFamily}`.trim();
+    const font =
+      `${style.fontStyle || ""} ${style.fontWeight || ""} ${style.fontSize} ${style.fontFamily}`.trim();
     const paddingLeft = parseFloat(style.paddingLeft || 16);
     const paddingTop = parseFloat(style.paddingTop || 12);
-    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.6;
+    const lineHeight =
+      parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.6;
 
     const ctx = canvas.getContext("2d");
     ctx.save();
@@ -108,25 +137,25 @@ export default function TextOverlay({ text, onDelete }) {
 
       // 波の y を基にターゲットとなる行を決める
       // サンプルから平均 y を取る
-        const canvas = canvasRef.current;
-        const ta = document.querySelector(".textarea-clean");
-        if (!canvas || !ta) return;
-        const canvasRect = ta.getBoundingClientRect();
+      const canvas = canvasRef.current;
+      const ta = document.querySelector(".textarea-clean");
+      if (!canvas || !ta) return;
+      const canvasRect = ta.getBoundingClientRect();
 
-        // サンプルの平均Y（ページ座標）
-        let avgY = samples.reduce((s, v) => s + v.y, 0) / samples.length;
+      // サンプルの平均Y（ページ座標）
+      let avgY = samples.reduce((s, v) => s + v.y, 0) / samples.length;
 
-        // 各行のページ座標Yを計算して、avgY と近い行を探す
-        let targetIndex = -1;
-        for (let i = 0; i < lines.length; i++) {
-          const ln = lines[i];
-          // ln.y はキャンバス内の描画Y（ピクセル、CSS単位）なので、要素のtopとスクロールを考慮
-          const lineGlobalY = canvasRect.top + ln.y - ta.scrollTop;
-          if (lineGlobalY >= avgY - 10 && lineGlobalY <= avgY + foam) {
-            targetIndex = i;
-            break;
-          }
+      // 各行のページ座標Yを計算して、avgY と近い行を探す
+      let targetIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        const ln = lines[i];
+        // ln.y はキャンバス内の描画Y（ピクセル、CSS単位）なので、要素のtopとスクロールを考慮
+        const lineGlobalY = canvasRect.top + ln.y - ta.scrollTop;
+        if (lineGlobalY >= avgY - 10 && lineGlobalY <= avgY + foam) {
+          targetIndex = i;
+          break;
         }
+      }
       if (targetIndex === -1) {
         // 見つからなければ上の行（0番）をターゲットにする
         targetIndex = 0;
@@ -138,7 +167,8 @@ export default function TextOverlay({ text, onDelete }) {
       const toRemoveLineIndices = [];
       for (let i = 0; i < removeLines; i++) {
         const idx = i; // 上から順に
-        if (idx < lines.length && !lines[idx].fading) toRemoveLineIndices.push(idx);
+        if (idx < lines.length && !lines[idx].fading)
+          toRemoveLineIndices.push(idx);
       }
 
       if (!toRemoveLineIndices.length) return;

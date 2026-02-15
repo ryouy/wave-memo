@@ -88,9 +88,15 @@ export default function P5Canvas() {
           if (now - lastInterval > 4000) {
             const intensity = p.map(noiseValue, 0, 1, 0.4, 1);
             const samples = [];
-            const rect = sketchRef.current?.getBoundingClientRect() || { top: 0, left: 0 };
+            const rect = sketchRef.current?.getBoundingClientRect() || {
+              top: 0,
+              left: 0,
+            };
             for (let i = 0; i < waveVertices.length; i += 6) {
-              samples.push({ x: waveVertices[i].x + rect.left, y: waveVertices[i].y + rect.top });
+              samples.push({
+                x: waveVertices[i].x + rect.left,
+                y: waveVertices[i].y + rect.top,
+              });
             }
             window.dispatchEvent(
               new CustomEvent("wave-pass", {

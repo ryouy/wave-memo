@@ -1,38 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wave Memo
+
+Wave Memo is a Next.js prototype built around a simple idea:
+
+Text should not always remain.
+
+Inspired by waves erasing writing on the shore, Wave Memo gently removes what you write. At fixed intervals, a wave arrives. The top line fades away. The process repeats until nothing remains.
+
+It is a memo experience designed around impermanence.
+
+---
+
+## Demo
+
+[Try here!](https://wave-memo-vlgs.vercel.app/)
+
+---
+
+## Concept
+
+Most note-taking tools prioritize storage, persistence, and accumulation.
+
+Wave Memo explores the opposite direction.
+
+You write.
+Time passes.
+The system erases.
+
+Deletion is not abrupt. It is visible, gradual, and integrated into the interaction.
+
+---
+
+## Philosophy
+
+Digital tools are optimized for retention.
+
+Everything is saved. Indexed. Backed up. Synced.
+
+Wave Memo questions that default.
+
+Not every thought needs to be stored.
+Not every sentence needs to survive.
+
+Writing can be transient.
+Disappearance can be intentional.
+
+Wave Memo treats erasure as a designed behavior rather than a failure state.
+
+---
+
+## Features
+
+- Periodic wave-triggered erasure
+- Line-by-line fade-out animation
+- Minimal writing interface
+- No persistence layer
+- Built with Next.js App Router
+
+---
 
 ## Getting Started
 
-First, run the development server:
+Clone the repository:
+
+```bash
+git clone https://github.com/ryouy/wave-memo.git
+cd wave-memo
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## How It Works
 
-To learn more about Next.js, take a look at the following resources:
+1. Text is stored internally as a list of lines.
+2. A timer triggers a periodic wave event.
+3. When a wave arrives:
+   - The first line is selected.
+   - A fade-out animation is applied.
+   - The line is removed from state.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. The process continues until the memo is empty.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+There is no undo. No archive. No history.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Design Principles
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# wave-memo
-# wave-memo
+- Impermanence over accumulation
+- Deletion as interaction
+- Calm visual motion
+- Minimal cognitive load
+
+---
+
+## Tech Stack
+
+- Next.js
+- React
+- TypeScript
+- CSS animations
