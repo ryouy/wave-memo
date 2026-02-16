@@ -1,144 +1,96 @@
-# Wave Memo
 
-Wave Memo is a Next.js prototype built around a simple idea:
+
+# Wave Memo
 
 > **Text should not always remain.**
 
-Inspired by waves erasing writing on the shore, Wave Memo gently removes what you write.
-At fixed intervals, a wave arrives.
-The top line fades away.
-The process repeats until nothing remains.
+Wave Memo is a small experiment in disappearance.
 
-It is a memo experience designed around **impermanence**.
+Inspired by waves erasing writing from the shore,
+this memo does not keep what you write.
+
+At fixed intervals, a wave arrives.
+The top line fades.
+Then another.
+Until nothing remains.
+
+It is not a tool for saving.
+It is a space for letting go.
+
+---
+
+[Try here!](https://wave-memo-vlgs.vercel.app/)
+
+## Statement
+
+Digital systems are built for permanence.
+
+Everything is stored.
+Everything is retrievable.
+Nothing truly disappears.
+
+Wave Memo resists that assumption.
+
+Here, writing is temporary.
+Time is part of the interface.
+Erasure is not an error — it is the behavior.
+
+The memo is not a container.
+It is a tide.
 
 ---
 
 ## A Quiet Choice
 
-Would you like to let your thoughts drift away with the waves?
+When you write, you stand at the shore.
 
-Wave Memo offers two intentional paths:
+You may let the waves take your words.
+Or, if a thought feels worth keeping,
+you must make a deliberate gesture —
+a screenshot.
 
-### Do not record
-
-Random waves arrive and quietly wash your thoughts away.
-
-### Record
-
-If a thought should not be erased, preserve it —
-not through built-in storage, but by intentionally taking a screenshot.
-
----
+There is no save button.
+No archive.
+No history.
 
 **Impermanence is the default.**
-**Preservation is a conscious act.**
+**Preservation requires intention.**
 
 ---
 
-## Demo
+## Experience
 
-[Try here!](https://wave-memo-vlgs.vercel.app/)
+* Lines fade, one by one
+* Disappearance is visible, gradual
+* No undo
+* No persistence
 
----
-
-## Concept
-
-Most note-taking tools prioritize storage, persistence, and accumulation.
-
-Wave Memo explores the opposite direction.
-
-You write.
-Time passes.
-The system erases.
-
-Deletion is not abrupt. It is visible, gradual, and integrated into the interaction.
+The system does not accumulate.
+It subtracts.
 
 ---
 
-## Philosophy
 
-Digital tools are optimized for retention.
 
-Everything is saved. Indexed. Backed up. Synced.
+## Technical Note
 
-Wave Memo questions that default.
+Built with:
 
-Not every thought needs to be stored.
-Not every sentence needs to survive.
+* Next.js
+* React
+* TypeScript
+* CSS animations
 
-Writing can be transient.
-Disappearance can be intentional.
-
-Wave Memo treats erasure as a designed behavior rather than a failure state.
+There is no database.
+Nothing is stored.
 
 ---
 
-## Features
+もしさらにアート寄りに振るなら：
 
-- Periodic wave-triggered erasure
-- Line-by-line fade-out animation
-- Minimal writing interface
-- No persistence layer
-- Built with Next.js App Router
+* 「Features」「Tech Stack」をもっと下に追いやる
+* READMEの後半をほぼステートメントにする
+* インストール手順を削る（展示作品的にする）
 
----
-
-## Getting Started
-
-Clone the repository:
-
-```bash
-git clone https://github.com/ryouy/wave-memo.git
-cd wave-memo
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Run the development server:
-
-```bash
-npm run dev
-```
-
-Open:
-
-```
-http://localhost:3000
-```
-
----
-
-## How It Works
-
-1. Text is stored internally as a list of lines.
-2. A timer triggers a periodic wave event.
-3. When a wave arrives:
-   - The first line is selected.
-   - A fade-out animation is applied.
-   - The line is removed from state.
-
-4. The process continues until the memo is empty.
-
-There is no undo. No archive. No history.
-
----
-
-## Design Principles
-
-- Impermanence over accumulation
-- Deletion as interaction
-- Calm visual motion
-- Minimal cognitive load
-
----
-
-## Tech Stack
-
-- Next.js
-- React
-- TypeScript
-- CSS animations
+もっとコンセプトアート寄りに振りますか？
+それとも今くらいがちょうどいいですか？
