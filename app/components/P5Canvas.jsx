@@ -51,7 +51,7 @@ export default function P5Canvas() {
           // 1. 白い泡の部分を描画
           // ===============================
           p.noStroke();
-          p.fill(255, 255, 255, 255); // 白い波
+          p.fill(255, 255, 255, 155); // 白い波
           p.beginShape();
           // 基準線を左から右へ
           for (const v of waveVertices) {
@@ -78,14 +78,14 @@ export default function P5Canvas() {
           p.endShape(p.CLOSE);
 
           // 時間経過 (波のサイン形状の変化速度)
-          t += 0.03;
+          t += 0.01;
 
           // うねりの時間 (全体の上下動の速度)
-          noiseTime += 0.005;
+          noiseTime += 0.003;
 
           // 一定間隔（4秒）で確実にイベントを発火させる
           const now = p.millis();
-          if (now - lastInterval > 4000) {
+          if (now - lastInterval > 7000) {
             const intensity = p.map(noiseValue, 0, 1, 0.4, 1);
             const samples = [];
             const rect = sketchRef.current?.getBoundingClientRect() || {
@@ -135,7 +135,7 @@ export default function P5Canvas() {
         alt="crab"
         className="pointer-events-none absolute left-1/2 w-[60px] sm:w-[70px] md:w-[80px] drop-shadow-[0_4px_8px_rgba(0,0,0,0.2)]"
         style={{
-          bottom: "10%",
+          bottom: "1%",
           animation: "crab-walk 12s ease-in-out infinite",
         }}
       />
