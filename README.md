@@ -84,13 +84,4 @@ Built with:
 There is no database.
 Nothing is stored.
 
----
 
-もしさらにアート寄りに振るなら：
-
-* 「Features」「Tech Stack」をもっと下に追いやる
-* READMEの後半をほぼステートメントにする
-* インストール手順を削る（展示作品的にする）
-
-もっとコンセプトアート寄りに振りますか？
-それとも今くらいがちょうどいいですか？
