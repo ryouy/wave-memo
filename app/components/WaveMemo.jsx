@@ -55,14 +55,15 @@ export default function WaveMemo() {
     if (window.matchMedia?.("(pointer: fine)").matches) inputRef.current?.focus();
   }, []);
 
-  // スマホのキーボードが出たら、入力欄がその上に来るように持ち上げる
+  // スマホのキーボードが出たら、景色全体を「キーボードの上の見える範囲」に収める。
+  // 画面の高さ(--app-h)と上端(--vv-top)を、見えている領域(visualViewport)に合わせる
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const root = document.documentElement;
     const sync = () => {
-      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      root.style.setProperty("--kb", `${Math.round(kb)}px`);
+      root.style.setProperty("--app-h", `${Math.round(vv.height)}px`);
+      root.style.setProperty("--vv-top", `${Math.round(vv.offsetTop)}px`);
     };
     sync();
     vv.addEventListener("resize", sync);
@@ -70,7 +71,8 @@ export default function WaveMemo() {
     return () => {
       vv.removeEventListener("resize", sync);
       vv.removeEventListener("scroll", sync);
-      root.style.removeProperty("--kb");
+      root.style.removeProperty("--app-h");
+      root.style.removeProperty("--vv-top");
     };
   }, []);
 

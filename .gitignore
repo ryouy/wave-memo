@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .npm-logs/
+
+# xcode
+/ios/build/
+xcuserdata/
+*.xcuserstate
+DerivedData/

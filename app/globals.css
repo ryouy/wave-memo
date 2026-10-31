@@ -12,14 +12,17 @@ body {
   font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
   background: linear-gradient(to bottom, #240775, #f98035, #fefbf3, #f7d178);
   background-attachment: fixed;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
+/* 見えている領域(キーボードを除いた範囲)にぴったり合わせる。--app-h / --vv-top は WaveMemo が更新する */
 .stage {
-  position: relative;
+  position: fixed;
+  top: var(--vv-top, 0px);
+  left: 0;
   width: 100%;
   height: 100vh;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   overflow: hidden;
   color: var(--ink, #3b2f4a);
   transition: color 0.8s;
@@ -56,8 +59,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding-bottom: calc(12dvh + var(--kb, 0px));
-  transition: padding-bottom 0.25s ease-out;
+  padding-bottom: calc(var(--app-h, 100dvh) * 0.12);
   pointer-events: none;
 }
 

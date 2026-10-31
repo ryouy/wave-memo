@@ -84,4 +84,13 @@ Built with:
 There is no database.
 Nothing is stored.
 
+---
 
+## iOS app (SwiftUI)
+
+The same world, written natively in Swift. The web version stays as it is.
+
+- Open `ios/WaveMemo.xcodeproj` in Xcode 16+ and run on an iPhone or iPad (iOS 17+).
+- Sky, sea, waves, birds, clouds and the shore are drawn with SwiftUI `Canvas`; the memo is a `UITextView`
+  that finds the wrapped lines the wave reaches and fades them away.
+- Morning / day / evening / night and the classic / pop illustration sets are switched from the top-right controls.

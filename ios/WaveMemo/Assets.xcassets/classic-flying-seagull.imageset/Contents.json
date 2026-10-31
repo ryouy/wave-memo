@@ -1,0 +1,12 @@
+{
+  "images": [
+    {
+      "filename": "classic-flying-seagull.png",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

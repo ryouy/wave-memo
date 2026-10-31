@@ -81,6 +81,7 @@ export default function P5Canvas({ theme, art }) {
 
   useEffect(() => {
     let p5Instance;
+    let resizer;
     let cancelled = false;
 
     const startP5 = async () => {
@@ -582,10 +583,12 @@ export default function P5Canvas({ theme, art }) {
           }
         };
 
-        p.windowResized = () => {
+        // 画面の回転やキーボードの出入りで、描く領域の大きさが変わったら追従する
+        resizer = new ResizeObserver(() => {
           const { w, h } = size();
-          p.resizeCanvas(w, h);
-        };
+          if (w > 0 && h > 0 && (w !== p.width || h !== p.height)) p.resizeCanvas(w, h);
+        });
+        resizer.observe(sketchRef.current);
       };
 
       p5Instance = new p5(sketch);
@@ -595,6 +598,7 @@ export default function P5Canvas({ theme, art }) {
 
     return () => {
       cancelled = true;
+      resizer?.disconnect();
       if (p5Instance) p5Instance.remove();
     };
   }, []);
