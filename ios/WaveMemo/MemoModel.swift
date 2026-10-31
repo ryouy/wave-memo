@@ -79,9 +79,28 @@ final class MemoModel: ObservableObject {
         }
     }
 
+    /// 薄くなった行を実際に消す。日本語入力の変換中(markedText)は文字を差し替えられないので、確定するまで待つ。
+    /// （待たずに model.text だけ書き換えると、確定時に古い文字が戻ってしまう）
     private func finishFade(_ count: Int) {
-        let ns = text as NSString
-        text = ns.substring(from: min(count, ns.length))
+        guard let tv = textView else {
+            let ns = text as NSString
+            text = ns.substring(from: min(count, ns.length))
+            endFade()
+            return
+        }
+        if tv.markedTextRange != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.finishFade(count) }
+            return
+        }
+        let n = min(count, (tv.text as NSString).length)
+        let selected = tv.selectedRange
+        tv.textStorage.replaceCharacters(in: NSRange(location: 0, length: n), with: "")
+        tv.selectedRange = NSRange(location: max(0, selected.location - n), length: selected.length)
+        text = tv.text
+        endFade()
+    }
+
+    private func endFade() {
         fadeCount = 0
         fadeProgress = 0
         fading = false

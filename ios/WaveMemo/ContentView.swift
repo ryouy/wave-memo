@@ -23,29 +23,36 @@ struct ContentView: View {
             // キーボードが出たら、景色全体を「キーボードの上の見える範囲」に収める
             let kb = keyboard.height
             let sceneHeight = max(120, fullHeight - kb)
+            // 縦長のスマホは、入力欄を高め(下から30%)に置く。キーボードが出ると景色ごと縮むので、岩やカニも一緒に上がる
+            let memoBottom: CGFloat = fullHeight / max(1, fullWidth) >= 1.6 ? 0.30 : 0.12
             ZStack(alignment: .top) {
                 SeaSceneView(sim: sim, theme: theme.wrappedValue, art: art.wrappedValue)
                     .frame(width: fullWidth, height: sceneHeight)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea()
 
-                // どこをタップしても入力でき、下へ払うとキーボードを閉じる
+                // キーボード以外をタップすると、キーボードを収納（出ていなければ入力を開始）。下へ払っても閉じる
                 Color.clear
                     .contentShape(Rectangle())
                     .ignoresSafeArea()
-                    .onTapGesture { memo.requestFocus() }
+                    .onTapGesture {
+                        // キーボードが出ているときは収納、出ていないときは入力を始める
+                        if keyboard.height > 0 { UIApplication.shared.endEditing() } else { memo.requestFocus() }
+                    }
                     .gesture(
                         DragGesture(minimumDistance: 24).onEnded { v in
                             if v.translation.height > 40 { UIApplication.shared.endEditing() }
                         })
 
-                // 入力欄は見える範囲の下から約12%。キーボードが出ても、その上に収まる
+                // 入力欄は見える範囲(キーボードの上)の下から30%/12%。画面全体を基準に置く
                 VStack {
                     Spacer()
                     MemoView(model: memo, theme: theme.wrappedValue, screenWidth: fullWidth)
-                        .padding(.bottom, max(12, kb + sceneHeight * 0.12 - insets.bottom))
+                        .padding(.bottom, kb + sceneHeight * memoBottom)
                 }
                 .frame(width: fullWidth)
+                .frame(maxHeight: .infinity)
+                .ignoresSafeArea()
 
                 VStack {
                     HStack {

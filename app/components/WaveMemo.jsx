@@ -49,10 +49,35 @@ export default function WaveMemo() {
   const inputRef = useRef(null);
   const fadingRef = useRef(0);
   const textRef = useRef("");
+  const composingRef = useRef(false);
 
   // マウス操作の環境でだけ自動フォーカスする（スマホでは起動直後にキーボードが景色を隠してしまうため）
   useEffect(() => {
     if (window.matchMedia?.("(pointer: fine)").matches) inputRef.current?.focus();
+  }, []);
+
+  // タッチ操作: 入力欄とボタン以外をタップすると、キーボードを収納（出ていなければ入力を開始）。
+  // タップ直後にブラウザが勝手にフォーカスを外すので、押した時点の状態を覚えておいて click で切り替える
+  useEffect(() => {
+    const coarse = window.matchMedia?.("(pointer: coarse)").matches;
+    if (!coarse) return;
+    let wasFocused = false;
+    const onDown = () => {
+      wasFocused = document.activeElement === inputRef.current;
+    };
+    const onClick = (e) => {
+      if (e.target.closest?.(".memo, .top-controls")) return;
+      const ta = inputRef.current;
+      if (!ta) return;
+      if (wasFocused) ta.blur();
+      else ta.focus();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("click", onClick);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("click", onClick);
+    };
   }, []);
 
   // スマホのキーボードが出たら、景色全体を「キーボードの上の見える範囲」に収める。
@@ -119,11 +144,17 @@ export default function WaveMemo() {
 
       fadingRef.current = count;
       setFading(count);
-      setTimeout(() => {
+      // 日本語入力の変換中に value を差し替えると変換が壊れる/古い文字が戻るので、確定するまで待つ
+      const finish = () => {
+        if (composingRef.current) {
+          setTimeout(finish, 100);
+          return;
+        }
         setText((prev) => prev.slice(count));
         fadingRef.current = 0;
         setFading(0);
-      }, FADE_MS);
+      };
+      setTimeout(finish, FADE_MS);
     };
 
     window.addEventListener("wave-pass", onWave);
@@ -151,6 +182,8 @@ export default function WaveMemo() {
         className="memo-text memo-input"
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onCompositionStart={() => (composingRef.current = true)}
+        onCompositionEnd={() => (composingRef.current = false)}
         placeholder="波に想いを綴ってください..."
         aria-label="メモ"
         spellCheck={false}

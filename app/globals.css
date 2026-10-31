@@ -59,8 +59,15 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding-bottom: calc(var(--app-h, 100dvh) * 0.12);
+  padding-bottom: calc(var(--app-h, 100dvh) * var(--memo-bottom, 0.12));
   pointer-events: none;
+}
+
+/* 縦長のスマホは入力欄を高め(下から30%)に置く。キーボードが出ると景色ごと縮むので、岩やカニも一緒に上がる */
+@media (max-aspect-ratio: 5/8) {
+  :root {
+    --memo-bottom: 0.3;
+  }
 }
 
 .memo {
