@@ -56,7 +56,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding-bottom: 12dvh;
+  padding-bottom: calc(12dvh + var(--kb, 0px));
+  transition: padding-bottom 0.25s ease-out;
   pointer-events: none;
 }
 
@@ -136,8 +137,11 @@ body {
   right: max(12px, env(safe-area-inset-right));
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
+  max-width: calc(100vw - 24px);
 }
 
 .glass {

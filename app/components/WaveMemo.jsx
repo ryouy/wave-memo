@@ -46,8 +46,33 @@ export default function WaveMemo() {
   const [fading, setFading] = useState(0); // 先頭から何文字がフェード中か
   const [lift, setLift] = useState({ y: 0, animate: false });
   const mirrorRef = useRef(null);
+  const inputRef = useRef(null);
   const fadingRef = useRef(0);
   const textRef = useRef("");
+
+  // マウス操作の環境でだけ自動フォーカスする（スマホでは起動直後にキーボードが景色を隠してしまうため）
+  useEffect(() => {
+    if (window.matchMedia?.("(pointer: fine)").matches) inputRef.current?.focus();
+  }, []);
+
+  // スマホのキーボードが出たら、入力欄がその上に来るように持ち上げる
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const sync = () => {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      root.style.setProperty("--kb", `${Math.round(kb)}px`);
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+      root.style.removeProperty("--kb");
+    };
+  }, []);
 
   useEffect(() => {
     textRef.current = text;
@@ -130,7 +155,7 @@ export default function WaveMemo() {
         autoCapitalize="off"
         autoCorrect="off"
         maxLength={45}
-        autoFocus
+        ref={inputRef}
       />
     </div>
   );

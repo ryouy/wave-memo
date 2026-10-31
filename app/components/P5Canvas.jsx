@@ -22,251 +22,62 @@ const STARS = Array.from({ length: 80 }, (_, i) => {
   const f = (n) => ((Math.sin(i * 127.1 + n * 311.7) * 43758.5453) % 1 + 1) % 1;
   return { x: f(1), y: f(2), r: 0.6 + f(3) * 1.3, ph: f(4) * 6.28 };
 });
-const hash = (a, b) => {
-  const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
-  return v - Math.floor(v);
-};
 const rgba = (c, a = c[3] ?? 1) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
 
-// ---- コードで描く船・岩・カニ ----
-const mulberry32 = (a) => () => {
-  a |= 0;
-  a = (a + 0x6d2b79f5) | 0;
-  let t = Math.imul(a ^ (a >>> 15), 1 | a);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+// ---- イラスト（public/art）の描画 ----
+// 絵のセット。classic = 絵画風イラスト / pop = ポップなイラスト。絵ごとの向きの違いもここで吸収する
+const ART_SETS = {
+  classic: { dir: "/art/classic", gullFacesLeft: false, planeSlope: 0.17 },
+  pop: { dir: "/art/pop", gullFacesLeft: true, planeSlope: 0.2 },
 };
-const shade = (c, k, a = 1) => `rgba(${(c[0] * k) | 0}, ${(c[1] * k) | 0}, ${(c[2] * k) | 0}, ${a})`;
+const SPRITE_NAMES = ["fishing-boat", "flying-seagull", "sand-crab", "shore-rock", "distant-plane", "scallop-shell"];
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const tintCache = new Map();
 
-function makeRock(seed) {
-  const rnd = mulberry32(seed);
-  const n = 12;
-  const pts = [];
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2;
-    const r = 0.8 + rnd() * 0.22;
-    const y = Math.sin(a) * r;
-    pts.push([Math.cos(a) * r, y > 0 ? y * 0.3 : y]); // 下側はつぶして地面に据える
+// 画像を表示サイズ(の近似)まで段階的に縮小し、時間帯の色味(tint)を重ねたキャンバスを返す。結果はキャッシュする。
+function spriteCanvas(im, name, w, tint) {
+  const dpr = window.devicePixelRatio || 1;
+  const qw = Math.max(8, Math.ceil(w / 8) * 8);
+  const ta = Math.round(tint[3] * 20);
+  const key = `${name}|${qw}|${dpr}|${tint[0] >> 4},${tint[1] >> 4},${tint[2] >> 4},${ta}`;
+  let cv = tintCache.get(key);
+  if (cv) return cv;
+  if (tintCache.size > 120) tintCache.clear();
+  const tw = Math.max(1, Math.round(qw * dpr));
+  const th = Math.max(1, Math.round((tw * im.naturalHeight) / im.naturalWidth));
+  let src = im;
+  let cw = im.naturalWidth;
+  let ch = im.naturalHeight;
+  while (cw / 2 >= tw) {
+    const c = document.createElement("canvas");
+    cw = Math.floor(cw / 2);
+    ch = Math.floor(ch / 2);
+    c.width = cw;
+    c.height = ch;
+    c.getContext("2d").drawImage(src, 0, 0, cw, ch);
+    src = c;
   }
-  const rp = () => [(rnd() - 0.5) * 1.3, -rnd() * 0.8];
-  const facets = Array.from({ length: 3 }, () => [rp(), rp(), rp()]);
-  const cracks = Array.from({ length: 3 }, () => [rp(), rp(), rp()]);
-  return { pts, facets, cracks };
-}
-const ROCKS = [makeRock(11), makeRock(23), makeRock(37), makeRock(58)];
-
-// (cx, groundY) に置く。w は岩の幅
-function drawRock(ctx, rock, cx, groundY, w, h, dim, flip) {
-  const sx = w / 2;
-  const sy = h / 2;
-  const cy = groundY - sy * 0.3 * 0.9;
-  ctx.save();
-  ctx.translate(cx, cy);
-  if (flip) ctx.scale(-1, 1);
-  // 接地の影
-  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
-  ctx.beginPath();
-  ctx.ellipse(0, sy * 0.3 * 0.9, sx * 1.05, sy * 0.14, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const P = rock.pts.map(([x, y]) => [x * sx, y * sy]);
-  const n = P.length;
-  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  const path = () => {
-    ctx.beginPath();
-    const m0 = mid(P[n - 1], P[0]);
-    ctx.moveTo(m0[0], m0[1]);
-    for (let i = 0; i < n; i++) {
-      const m = mid(P[i], P[(i + 1) % n]);
-      ctx.quadraticCurveTo(P[i][0], P[i][1], m[0], m[1]);
-    }
-    ctx.closePath();
-  };
-  const g = ctx.createLinearGradient(-sx, -sy, sx * 0.8, sy * 0.4);
-  g.addColorStop(0, shade([178, 168, 148], dim));
-  g.addColorStop(0.55, shade([122, 112, 98], dim));
-  g.addColorStop(1, shade([72, 64, 58], dim));
-  path();
-  ctx.fillStyle = g;
-  ctx.fill();
-  ctx.save();
-  path();
-  ctx.clip();
-  ctx.fillStyle = shade([40, 34, 30], dim, 0.16);
-  for (const f of rock.facets) {
-    ctx.beginPath();
-    ctx.moveTo(f[0][0] * sx, f[0][1] * sy);
-    ctx.lineTo(f[1][0] * sx, f[1][1] * sy);
-    ctx.lineTo(f[2][0] * sx, f[2][1] * sy);
-    ctx.closePath();
-    ctx.fill();
+  cv = document.createElement("canvas");
+  cv.width = tw;
+  cv.height = th;
+  const c2 = cv.getContext("2d");
+  c2.imageSmoothingQuality = "high";
+  c2.drawImage(src, 0, 0, tw, th);
+  if (ta > 0) {
+    c2.globalCompositeOperation = "source-atop";
+    c2.fillStyle = `rgba(${tint[0] | 0}, ${tint[1] | 0}, ${tint[2] | 0}, ${ta / 20})`;
+    c2.fillRect(0, 0, tw, th);
   }
-  ctx.strokeStyle = shade([40, 34, 30], dim, 0.4);
-  ctx.lineWidth = Math.max(1, w * 0.008);
-  ctx.lineJoin = "round";
-  for (const c of rock.cracks) {
-    ctx.beginPath();
-    ctx.moveTo(c[0][0] * sx, c[0][1] * sy);
-    ctx.lineTo(c[1][0] * sx, c[1][1] * sy);
-    ctx.lineTo(c[2][0] * sx, c[2][1] * sy);
-    ctx.stroke();
-  }
-  // 左上の光
-  const hl = ctx.createRadialGradient(-sx * 0.35, -sy * 0.55, 0, -sx * 0.35, -sy * 0.55, sx * 0.8);
-  hl.addColorStop(0, `rgba(255, 245, 225, ${0.28 * dim})`);
-  hl.addColorStop(1, "rgba(255, 245, 225, 0)");
-  ctx.fillStyle = hl;
-  ctx.fillRect(-sx, -sy, sx * 2, sy * 2);
-  ctx.restore();
-  path();
-  ctx.strokeStyle = shade([40, 34, 30], dim, 0.5);
-  ctx.lineWidth = Math.max(1, w * 0.01);
-  ctx.stroke();
-  ctx.restore();
+  tintCache.set(key, cv);
+  return cv;
 }
 
-// 小さな船。船首は右向きに描き、dir<0 のとき反転する
-function drawBoat(ctx, x, y, u, dir, tilt, dim) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(tilt);
-  ctx.scale(dir, 1);
-  // 水面の影
-  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
-  ctx.beginPath();
-  ctx.ellipse(0, 0.1 * u, 3.3 * u, 0.22 * u, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // 帆とマスト
-  ctx.strokeStyle = shade([70, 56, 48], dim);
-  ctx.lineWidth = 0.14 * u;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(1.1 * u, -1.3 * u);
-  ctx.lineTo(1.1 * u, -5 * u);
-  ctx.stroke();
-  ctx.fillStyle = shade([250, 240, 216], dim, 0.96);
-  ctx.beginPath();
-  ctx.moveTo(1.25 * u, -4.9 * u);
-  ctx.quadraticCurveTo(3.1 * u, -3.3 * u, 3 * u, -1.9 * u);
-  ctx.lineTo(1.25 * u, -1.9 * u);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = shade([232, 120, 90], dim, 0.95);
-  ctx.beginPath();
-  ctx.moveTo(1.1 * u, -5 * u);
-  ctx.lineTo(0.2 * u, -4.75 * u);
-  ctx.lineTo(1.1 * u, -4.45 * u);
-  ctx.closePath();
-  ctx.fill();
-  // 船室
-  ctx.fillStyle = shade([226, 232, 238], dim);
-  ctx.fillRect(-1.9 * u, -2.6 * u, 2 * u, 1.5 * u);
-  ctx.fillStyle = shade([58, 92, 112], dim);
-  ctx.fillRect(-2.1 * u, -2.9 * u, 2.4 * u, 0.35 * u);
-  ctx.fillStyle = shade([40, 70, 92], dim);
-  ctx.fillRect(-1.6 * u, -2.25 * u, 0.55 * u, 0.55 * u);
-  ctx.fillRect(-0.8 * u, -2.25 * u, 0.55 * u, 0.55 * u);
-  // 船体
-  const hull = ctx.createLinearGradient(0, -1.5 * u, 0, 0.1 * u);
-  hull.addColorStop(0, shade([200, 70, 58], dim));
-  hull.addColorStop(1, shade([140, 38, 34], dim));
-  ctx.fillStyle = hull;
-  ctx.beginPath();
-  ctx.moveTo(-3 * u, -1.1 * u);
-  ctx.lineTo(3.5 * u, -1.5 * u);
-  ctx.quadraticCurveTo(2.8 * u, 0.1 * u, 1.4 * u, 0.1 * u);
-  ctx.lineTo(-2.2 * u, 0.1 * u);
-  ctx.quadraticCurveTo(-2.9 * u, 0, -3 * u, -1.1 * u);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = shade([250, 244, 232], dim, 0.9);
-  ctx.lineWidth = 0.2 * u;
-  ctx.beginPath();
-  ctx.moveTo(-2.95 * u, -0.95 * u);
-  ctx.lineTo(3.3 * u, -1.3 * u);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawCrab(ctx, x, y, u, phase, dim) {
-  const body = [232, 88, 58];
-  const dark = [150, 44, 34];
-  ctx.save();
-  ctx.translate(x, y + Math.abs(Math.sin(phase)) * u * 0.06);
-  ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
-  ctx.beginPath();
-  ctx.ellipse(0, 0, u * 1.9, u * 0.28, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  for (const s of [-1, 1]) {
-    // 脚（左右3本ずつ、交互にちょこちょこ動く）
-    ctx.strokeStyle = shade(dark, dim);
-    ctx.lineWidth = u * 0.2;
-    for (let i = 0; i < 3; i++) {
-      const w = Math.sin(phase + i * 1.3 + (s > 0 ? Math.PI : 0)) * u * 0.18;
-      const sy = -u * (0.75 - i * 0.2);
-      ctx.beginPath();
-      ctx.moveTo(s * u * 0.8, sy);
-      ctx.lineTo(s * u * (1.5 + i * 0.12), sy - u * 0.45);
-      ctx.lineTo(s * u * (1.95 + i * 0.1) + w, -u * 0.02);
-      ctx.stroke();
-    }
-    // はさみ
-    const wave = Math.sin(phase * 0.5 + (s > 0 ? 0 : 1.5)) * u * 0.12;
-    const hx = s * u * 1.75;
-    const hy = -u * 1.95 + wave;
-    ctx.strokeStyle = shade(body, dim);
-    ctx.lineWidth = u * 0.22;
-    ctx.beginPath();
-    ctx.moveTo(s * u * 1, -u * 1.1);
-    ctx.lineTo(hx, hy + u * 0.35);
-    ctx.stroke();
-    ctx.fillStyle = shade(body, dim);
-    ctx.beginPath();
-    ctx.arc(hx, hy, u * 0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = shade(dark, dim);
-    ctx.lineWidth = u * 0.1;
-    ctx.beginPath();
-    ctx.moveTo(hx, hy - u * 0.05);
-    ctx.lineTo(hx - s * u * 0.15, hy - u * 0.5);
-    ctx.stroke();
-    // 目
-    ctx.strokeStyle = shade(dark, dim);
-    ctx.lineWidth = u * 0.1;
-    ctx.beginPath();
-    ctx.moveTo(s * u * 0.4, -u * 1.6);
-    ctx.lineTo(s * u * 0.45, -u * 2.05);
-    ctx.stroke();
-    ctx.fillStyle = shade([255, 255, 255], dim);
-    ctx.beginPath();
-    ctx.arc(s * u * 0.45, -u * 2.15, u * 0.26, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#222";
-    ctx.beginPath();
-    ctx.arc(s * u * 0.45, -u * 2.15, u * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // 甲羅
-  const g = ctx.createLinearGradient(0, -u * 1.8, 0, -u * 0.3);
-  g.addColorStop(0, shade([246, 112, 76], dim));
-  g.addColorStop(1, shade(body, dim));
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.ellipse(0, -u * 0.95, u * 1.3, u * 0.85, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = `rgba(255, 220, 190, ${0.35 * dim})`;
-  ctx.beginPath();
-  ctx.ellipse(-u * 0.35, -u * 1.3, u * 0.5, u * 0.22, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-export default function P5Canvas({ theme }) {
+export default function P5Canvas({ theme, art }) {
   const sketchRef = useRef(null);
   const themeRef = useRef(theme);
   themeRef.current = theme;
+  const artRef = useRef(art);
+  artRef.current = art;
 
   useEffect(() => {
     let p5Instance;
@@ -299,6 +110,15 @@ export default function P5Canvas({ theme }) {
         let nextBird = rand(2500, 5000);
         let nextPlane = rand(12000, 20000);
         const pal = clone(PALETTES[themeRef.current]);
+        const sprites = {};
+        for (const [key, set] of Object.entries(ART_SETS)) {
+          for (const n of SPRITE_NAMES) {
+            const im = new Image();
+            im.src = `${set.dir}/${n}.webp`;
+            sprites[`${key}/${n}`] = im;
+          }
+        }
+        const artSet = () => ART_SETS[artRef.current] || ART_SETS.classic;
 
         const size = () => ({
           w: sketchRef.current?.clientWidth || window.innerWidth,
@@ -373,68 +193,20 @@ export default function P5Canvas({ theme }) {
           }
         };
 
-        const drawGull = (ctx, x, y, s, flap, alpha, col) => {
+        // 画像を (x, y) に描く。ax/ay は画像上の基準点(0〜1)、flip で左右反転、sy で縦方向の伸縮(羽ばたき)
+        const drawSprite = (ctx, name, x, y, w, o = {}) => {
+          const im = sprites[`${artRef.current}/${name}`];
+          if (!im || !im.complete || !im.naturalWidth) return 0;
+          const h = (w * im.naturalHeight) / im.naturalWidth;
+          const cv = spriteCanvas(im, `${artRef.current}/${name}`, w, pal.tint);
           ctx.save();
           ctx.translate(x, y);
-          ctx.strokeStyle = rgba(col, alpha);
-          ctx.lineWidth = Math.max(1.2, s * 0.16);
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          const tip = flap * s * 0.65;
-          ctx.beginPath();
-          ctx.moveTo(-s * 1.15, tip);
-          ctx.quadraticCurveTo(-s * 0.55, -s * 0.55 + tip * 0.35, 0, 0);
-          ctx.quadraticCurveTo(s * 0.55, -s * 0.55 + tip * 0.35, s * 1.15, tip);
-          ctx.stroke();
+          if (o.rot) ctx.rotate(o.rot);
+          ctx.scale(o.flip ? -1 : 1, o.sy || 1);
+          if (o.alpha !== undefined) ctx.globalAlpha = o.alpha;
+          ctx.drawImage(cv, -w * (o.ax ?? 0.5), -h * (o.ay ?? 0.5), w, h);
           ctx.restore();
-        };
-
-        const drawPlane = (ctx, pl, col) => {
-          const u = pl.u;
-          ctx.save();
-          ctx.translate(pl.x, pl.y + Math.sin(clock * 0.0017) * u * 0.18);
-          ctx.rotate(Math.sin(clock * 0.0011) * 0.035 * pl.dir);
-          ctx.scale(pl.dir, 1);
-          ctx.fillStyle = rgba(col, 0.88);
-          ctx.strokeStyle = rgba(col, 0.88);
-          ctx.lineWidth = u * 0.07;
-          // 胴体
-          ctx.beginPath();
-          ctx.ellipse(0, 0, u * 1.6, u * 0.34, 0, 0, Math.PI * 2);
-          ctx.fill();
-          // 尾翼
-          ctx.beginPath();
-          ctx.moveTo(-u * 1.3, -u * 0.1);
-          ctx.lineTo(-u * 1.95, -u * 0.95);
-          ctx.lineTo(-u * 1.5, -u * 0.95);
-          ctx.lineTo(-u * 0.85, -u * 0.1);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(-u * 1.55, 0, u * 0.42, u * 0.07, 0, 0, Math.PI * 2);
-          ctx.fill();
-          // 複葉の翼と支柱
-          ctx.beginPath();
-          ctx.ellipse(u * 0.2, -u * 0.62, u * 0.95, u * 0.08, 0, 0, Math.PI * 2);
-          ctx.ellipse(u * 0.2, u * 0.3, u * 0.95, u * 0.08, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(-u * 0.3, -u * 0.6);
-          ctx.lineTo(-u * 0.3, u * 0.28);
-          ctx.moveTo(u * 0.7, -u * 0.6);
-          ctx.lineTo(u * 0.7, u * 0.28);
-          ctx.stroke();
-          // プロペラ（回転して見える）
-          const L = u * 0.62 * Math.abs(Math.cos(clock * 0.06));
-          ctx.fillStyle = rgba(col, 0.22);
-          ctx.beginPath();
-          ctx.ellipse(u * 1.68, 0, u * 0.07, u * 0.62, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.lineWidth = u * 0.09;
-          ctx.beginPath();
-          ctx.moveTo(u * 1.68, -L);
-          ctx.lineTo(u * 1.68, L);
-          ctx.stroke();
-          ctx.restore();
+          return h;
         };
 
         p.setup = () => {
@@ -548,13 +320,14 @@ export default function P5Canvas({ theme }) {
           }
           if (!plane && clock > nextPlane) {
             const dir = Math.random() < 0.5 ? 1 : -1;
-            const u = Math.min(W, H) * 0.035;
+            const pw = clamp(Math.min(W, H) * 0.2, 56, 150);
             plane = {
               dir,
-              u,
-              x: dir > 0 ? -u * 4 : W + u * 4,
-              y: rand(0.07, 0.2) * H,
-              vx: (W + u * 8) / 26000,
+              w: pw,
+              x0: dir > 0 ? -pw : W + pw,
+              x: dir > 0 ? -pw : W + pw,
+              y0: rand(0.2, 0.3) * H,
+              vx: (W + pw * 2) / 26000,
             };
             nextPlane = clock + rand(35000, 60000);
           }
@@ -580,20 +353,28 @@ export default function P5Canvas({ theme }) {
             if (b.away) {
               x = b.x0 + (b.x1 - b.x0) * ease(k * 0.9 + 0.05 * k);
               y = b.y0 + (b.y1 - b.y0) * k * k;
-              s = Math.min(W, H) * 0.022 * b.size * (1 - 0.82 * k);
+              s = clamp(Math.min(W, H) * 0.06, 26, 70) * b.size * (1 - 0.8 * k);
               a = 1 - Math.max(0, (k - 0.75) / 0.25);
             } else {
               x = b.x0 + b.dir * (W + 80) * k;
               y = b.y0 + Math.sin(k * 6 * b.sway + b.ph) * H * 0.02;
-              s = Math.min(W, H) * 0.022 * b.size;
+              s = clamp(Math.min(W, H) * 0.06, 26, 70) * b.size;
             }
-            const flap = Math.sin(clock * 0.008 + b.ph) * (b.away ? 0.9 : 0.75);
-            drawGull(ctx, x, y, s, flap, a, pal.silhouette);
+            const flap = Math.sin(clock * 0.008 + b.ph);
+            const left = b.away ? b.x1 < b.x0 : b.dir < 0;
+            drawSprite(ctx, "flying-seagull", x, y, s, {
+              flip: artSet().gullFacesLeft ? !left : left,
+              sy: 1 + flap * 0.16,
+              rot: (left ? 1 : -1) * flap * 0.05,
+              alpha: a,
+            });
           }
           if (plane) {
             plane.x += plane.vx * plane.dir * dt;
-            drawPlane(ctx, plane, pal.silhouette);
-            if (plane.x < -plane.u * 5 || plane.x > W + plane.u * 5) plane = null;
+            // 機首を少し上げたまま、ゆっくり上昇していく
+            const py = plane.y0 - Math.abs(plane.x - plane.x0) * artSet().planeSlope + Math.sin(clock * 0.0017) * 2;
+            drawSprite(ctx, "distant-plane", plane.x, py, plane.w, { flip: plane.dir < 0, alpha: 0.95 });
+            if (plane.x < -plane.w * 1.5 || plane.x > W + plane.w * 1.5) plane = null;
           }
           ctx.restore();
 
@@ -656,13 +437,20 @@ export default function P5Canvas({ theme }) {
 
           // ---- 船（水平線の近くを、ゆっくり右から左へ） ----
           boatClock += dt;
-          const BOAT_MOVE = 32000;
-          const boatK = (boatClock % 45000) / BOAT_MOVE;
+          const boatK = (boatClock % 45000) / 32000;
           if (boatK < 1) {
-            const bu = Math.max(8, Math.min(W, H) * 0.02);
-            const bx = W + bu * 6 - (W + bu * 12) * boatK;
-            const by = horizonY + Math.min(14, seaH * 0.5) + Math.sin(clock * 0.0016) * bu * 0.2;
-            drawBoat(ctx, bx, by, bu, -1, Math.sin(clock * 0.0011) * 0.03, pal.dim);
+            const bw = clamp(Math.min(W, H) * 0.17, 64, 170);
+            const bx = W + bw - (W + bw * 2) * boatK;
+            const by = horizonY + Math.min(14, seaH * 0.5) + Math.sin(clock * 0.0016) * bw * 0.02;
+            ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
+            ctx.beginPath();
+            ctx.ellipse(bx, by + 1, bw * 0.46, bw * 0.03, 0, 0, Math.PI * 2);
+            ctx.fill();
+            drawSprite(ctx, "fishing-boat", bx, by, bw, {
+              flip: true, // 船首を進行方向(左)へ
+              ay: 0.92,
+              rot: Math.sin(clock * 0.0011) * 0.03,
+            });
           }
 
           // ---- 波が引いたあとの濡れた砂 ----
@@ -751,15 +539,36 @@ export default function P5Canvas({ theme }) {
           }
           ctx.stroke();
 
-          // ---- カニと岩 ----
-          const cu = Math.max(11, Math.min(34, Math.min(W, H) * 0.032));
-          drawCrab(ctx, W * 0.5 + Math.sin(clock * 0.000524) * W * 0.3, H * 0.955, cu, clock * 0.012, pal.dim);
-          const rw = Math.max(110, Math.min(W * 0.26, 320));
-          const gy = H + 4;
-          drawRock(ctx, ROCKS[0], rw * 0.5 - 6, gy, rw, rw * 0.72, pal.dim, false);
-          drawRock(ctx, ROCKS[1], rw * 1.0, gy, rw * 0.55, rw * 0.4, pal.dim, true);
-          drawRock(ctx, ROCKS[2], W - rw * 0.5 + 6, gy, rw, rw * 0.72, pal.dim, true);
-          drawRock(ctx, ROCKS[3], W - rw * 1.0, gy, rw * 0.55, rw * 0.4, pal.dim, false);
+          // ---- 貝・カニ・岩（画面幅に合わせて大きさを決める） ----
+          const m = Math.min(W, H);
+          const rw = clamp(Math.min(W * 0.28, H * 0.42), 100, 330);
+          const sw = clamp(m * 0.075, 26, 64);
+          const cw = clamp(m * 0.11, 44, 110);
+          // カニは左右の岩のあいだだけを歩く。貝はその中央寄りに置く
+          const half = Math.max(W * 0.05, W / 2 - rw * 1.25 - cw * 0.5);
+          drawSprite(ctx, "scallop-shell", W * 0.5 - half * 0.6, H * 0.975, sw, { rot: -0.35 });
+          const crabX = W * 0.5 + Math.sin(clock * 0.000524) * half;
+          ctx.fillStyle = "rgba(0, 0, 0, 0.14)";
+          ctx.beginPath();
+          ctx.ellipse(crabX, H * 0.965, cw * 0.42, cw * 0.05, 0, 0, Math.PI * 2);
+          ctx.fill();
+          drawSprite(ctx, "sand-crab", crabX, H * 0.965 - Math.abs(Math.sin(clock * 0.012)) * cw * 0.03, cw, {
+            ay: 0.88,
+            rot: Math.sin(clock * 0.012) * 0.04,
+          });
+          const rock = (x, w2, flip) => {
+            const rim = sprites[`${artRef.current}/shore-rock`];
+            const rh = w2 * (rim && rim.naturalWidth ? rim.naturalHeight / rim.naturalWidth : 0.58);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+            ctx.beginPath();
+            ctx.ellipse(x, H - rh * 0.1, w2 * 0.52, rh * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            drawSprite(ctx, "shore-rock", x, H + rh * 0.16, w2, { ay: 1, flip });
+          };
+          rock(rw * 0.42, rw, false);
+          rock(rw * 0.98, rw * 0.5, true);
+          rock(W - rw * 0.42, rw, true);
+          rock(W - rw * 0.98, rw * 0.5, false);
 
           // 波が文字の位置まで来たら、波先より上の行をさらう
           if (phase === "down" && !swept && phaseTime > downMs * 0.65) {

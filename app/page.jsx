@@ -8,15 +8,16 @@ import { PALETTES } from "./themes";
 
 export default function Home() {
   const [theme, setTheme] = useState("evening");
+  const [art, setArt] = useState("classic"); // classic = 絵画風 / pop = ポップ
   const { ink: [r, g, b], glow } = PALETTES[theme];
 
   return (
     <main className="stage" style={{ "--ink": `rgb(${r}, ${g}, ${b})`, "--glow": glow }}>
-      <P5Canvas theme={theme} />
+      <P5Canvas theme={theme} art={art} />
       <div className="memo-wrap">
         <WaveMemo />
       </div>
-      <Controls theme={theme} onChange={setTheme} />
+      <Controls theme={theme} onChange={setTheme} art={art} onArtChange={setArt} />
     </main>
   );
 }

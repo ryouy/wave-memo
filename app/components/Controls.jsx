@@ -31,7 +31,7 @@ const ICONS = {
 
 const TITLES = { morning: "朝", day: "昼", evening: "夕", night: "晩" };
 
-export default function Controls({ theme, onChange }) {
+export default function Controls({ theme, onChange, art, onArtChange }) {
   const [supported, setSupported] = useState(false);
   const [full, setFull] = useState(false);
 
@@ -74,6 +74,21 @@ export default function Controls({ theme, onChange }) {
             </svg>
           </button>
         ))}
+      </div>
+      <div className="glass">
+        <button
+          type="button"
+          className="icon-btn"
+          aria-pressed={art === "pop"}
+          aria-label="ポップなイラストに切り替え"
+          title={art === "pop" ? "ポップ（オン）" : "ポップ（オフ）"}
+          onClick={() => onArtChange(art === "pop" ? "classic" : "pop")}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
+            <path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7L19 15z" />
+          </svg>
+        </button>
       </div>
       {supported && (
         <div className="glass">
