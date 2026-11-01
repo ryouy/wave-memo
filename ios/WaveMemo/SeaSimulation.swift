@@ -209,7 +209,7 @@ final class SeaSimulation {
     }
 
     private static let keyframes: [(Theme, Double)] = [
-        (.day, Double.pi / 2), (.evening, Double.pi + 0.083), (.night, Double.pi * 1.3),
+        (.day, Double.pi / 2), (.evening, Double.pi + 0.083), (.night, Theme.night.phi),
         (.morning, Double.pi * 2 - 0.14), (.day, Double.pi / 2 + Double.pi * 2),
     ]
 
@@ -344,7 +344,7 @@ final class SeaSimulation {
         let unit = min(g.W, g.H) * 0.11
         let sunR = unit * CGFloat(pal.sunScale)
         let moonR = unit * 0.5
-        let phiMoon = phi + Double.pi
+        let phiMoon = Theme.moonPsi(phi)
         let sunK = -3.6 * sin(phi)
         let moonK = -5 * sin(phiMoon)
         let moonFade = 0.38 + 0.62 * min(1, max(0, pal.stars)) // 昼の月は淡く
@@ -592,16 +592,33 @@ final class SeaSimulation {
 
     private func drawBoat(_ ctx: inout GraphicsContext, _ g: Geo, dt: Double) {
         boatClock += dt
-        let k = CGFloat(boatClock.truncatingRemainder(dividingBy: 45000) / 32000)
+        let k = CGFloat(boatClock.truncatingRemainder(dividingBy: 66000) / 48000)
         guard k < 1 else { return }
         let seaH = g.baseY - g.horizonY
         let bw = clamp(min(g.W, g.H) * 0.17, 64, 170)
         let bx = g.W + bw - (g.W + bw * 2) * k
-        let by = g.horizonY + min(14, seaH * 0.5) + CGFloat(sin(clock * 0.0016)) * bw * 0.02
+        let waterY = g.horizonY + min(14, seaH * 0.5)
+        let bob = CGFloat(sin(clock * 0.0007)) * bw * 0.025
+        // 水の中の影
         ctx.fill(
-            Path(ellipseIn: CGRect(x: bx - bw * 0.46, y: by + 1 - bw * 0.03, width: bw * 0.92, height: bw * 0.06)),
-            with: .color(.black.opacity(0.16)))
-        sprite(&ctx, "fishing-boat", x: bx, y: by, w: bw, ay: 0.92, flip: true, rot: sin(clock * 0.0011) * 0.03)
+            Path(ellipseIn: CGRect(x: bx - bw * 0.5, y: waterY + 3 - bw * 0.035, width: bw, height: bw * 0.07)),
+            with: .color(Color(red: 20 / 255, green: 30 / 255, blue: 70 / 255, opacity: 0.2)))
+        // 水面より下は描かない（船体の下のほうが水に沈む）
+        var c = ctx
+        c.clip(to: Path(CGRect(x: bx - bw, y: 0, width: bw * 2, height: waterY)))
+        sprite(&c, "fishing-boat", x: bx, y: waterY + bob, w: bw, ay: 0.87, flip: true, rot: sin(clock * 0.0005 + 1) * 0.028)
+        // 船のまわりの水面の波紋
+        for i in 0..<2 {
+            let half = bw * (0.54 - CGFloat(i) * 0.14)
+            var p = Path()
+            var x = -half
+            while x <= half {
+                let yy = waterY + 1.5 + CGFloat(i) * 3.5 + CGFloat(sin(Double(x) * 0.09 + clock * 0.0009 + Double(i))) * 1.1
+                if x == -half { p.move(to: CGPoint(x: bx + x, y: yy)) } else { p.addLine(to: CGPoint(x: bx + x, y: yy)) }
+                x += 4
+            }
+            ctx.stroke(p, with: .color(.white.opacity(0.55 - Double(i) * 0.2)), style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
+        }
     }
 
     private func drawWords(_ ctx: inout GraphicsContext, _ g: Geo, dt: Double) {

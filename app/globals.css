@@ -220,6 +220,47 @@ body {
   flex: 1;
 }
 
+.menu-sets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.menu-set {
+  display: grid;
+  place-items: center;
+  height: 46px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background 0.25s, border-color 0.25s, transform 0.2s;
+}
+
+.menu-set img {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.menu-set:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.menu-set[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: #fff;
+}
+
+.menu-set:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .menu-actions {
   padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.16);

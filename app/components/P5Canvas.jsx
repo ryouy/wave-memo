@@ -14,7 +14,22 @@ const MOON = { core: [240, 244, 255], glow: [150, 170, 255], reflect: [200, 215,
 const TAU = Math.PI * 2;
 // 太陽の軌道（楕円）。東(左)の水平線で昇り、真上を通って、西(右)の水平線へ沈み、夜は地平線の下を回って朝に戻る。
 // φ は軌道上の位置。時間帯の切り替えは、必ずこの向き(φが増える向き)に進む。月は太陽の反対側(φ+π)にいる。
-const THEME_PHI = { morning: TAU - 0.14, day: Math.PI / 2, evening: Math.PI + 0.083, night: Math.PI * 1.3 };
+// 月が空にいるのは、太陽が完全に沈んでから、また顔を出すまでのあいだだけ（朝夕に、太陽と月が同時に水平線の上に出ないように）
+const MOON_FROM = Math.PI + 0.73;
+const MOON_TO = TAU - 0.73;
+const THEME_PHI = {
+  morning: TAU - 0.14,
+  day: Math.PI / 2,
+  evening: Math.PI + 0.083,
+  night: MOON_FROM + 0.35 * (MOON_TO - MOON_FROM), // 月が左の高いところにいる
+};
+// 太陽の位置 φ から、月の軌道上の位置 ψ を決める。空にいない間は、水平線の下で待つ
+function moonPsi(phi) {
+  const p = ((phi % TAU) + TAU) % TAU;
+  if (p >= MOON_FROM && p <= MOON_TO) return -0.5 + ((p - MOON_FROM) / (MOON_TO - MOON_FROM)) * (Math.PI + 1.0);
+  if (p < Math.PI / 2) return Math.PI + 0.75; // 日の出のあとは、右の水平線の下
+  return p < MOON_FROM ? -0.75 : Math.PI + 0.75; // 日没までは左の水平線の下で出番を待つ
+}
 // 時間帯の並び(φの小さい順)。空・海・星などの色は、いまの φ に応じて、この隣り合う2つを混ぜる
 const KEYFRAMES = [
   ["day", THEME_PHI.day],
@@ -42,10 +57,14 @@ const STARS = Array.from({ length: 80 }, (_, i) => {
 const rgba = (c, a = c[3] ?? 1) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
 
 // ---- イラスト（public/art）の描画 ----
-// 絵のセット。classic = 絵画風イラスト / pop = ポップなイラスト。絵ごとの向きの違いもここで吸収する
+// 絵のセット（4種類）。絵ごとの向きの違いもここで吸収する
 const ART_SETS = {
-  classic: { dir: "/art/classic", gullFacesLeft: false, planeSlope: 0.17 },
-  pop: { dir: "/art/pop", gullFacesLeft: true, planeSlope: 0.2 },
+  // 新しいヴィンテージ風・カラフルなポップ。飛行機は水平に飛ぶ絵なので、ほぼ水平に横切る
+  classic: { dir: "/art/classic", gullFacesLeft: false, planeSlope: 0.03 },
+  pop: { dir: "/art/pop", gullFacesLeft: false, planeSlope: 0.03 },
+  // 前の絵画風・輪郭つきのポップ（旅客機は機首を上げて上昇する）
+  painted: { dir: "/art/painted", gullFacesLeft: false, planeSlope: 0.17 },
+  cartoon: { dir: "/art/cartoon", gullFacesLeft: true, planeSlope: 0.2 },
 };
 const SPRITE_NAMES = ["fishing-boat", "flying-seagull", "sand-crab", "shore-rock", "distant-plane", "scallop-shell"];
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -480,7 +499,7 @@ export default function P5Canvas({ theme, art }) {
 
           // ---- 太陽と月（別の天体。水平線より下は描かない） ----
           const unit = Math.min(W, H) * 0.11;
-          const phiMoon = phi + Math.PI;
+          const phiMoon = moonPsi(phi);
           const sunR = unit * pal.sunScale;
           const moonR = unit * MOON.scale;
           const bodies = [
@@ -654,22 +673,44 @@ export default function P5Canvas({ theme, art }) {
           ctx.lineTo(W, horizonY);
           ctx.stroke();
 
-          // ---- 船（水平線の近くを、ゆっくり右から左へ） ----
+          // ---- 船（水平線の近くを、ゆっくり右から左へ。船体の下は水の中に沈めて、浮かんでゆらゆら） ----
           boatClock += dt;
-          const boatK = (boatClock % 45000) / 32000;
+          const boatK = (boatClock % 66000) / 48000;
           if (boatK < 1) {
             const bw = clamp(Math.min(W, H) * 0.17, 64, 170);
             const bx = W + bw - (W + bw * 2) * boatK;
-            const by = horizonY + Math.min(14, seaH * 0.5) + Math.sin(clock * 0.0016) * bw * 0.02;
-            ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
+            const waterY = horizonY + Math.min(14, seaH * 0.5);
+            const bob = Math.sin(clock * 0.0007) * bw * 0.025;
+            // 水の中の影
+            ctx.fillStyle = "rgba(20, 30, 70, 0.2)";
             ctx.beginPath();
-            ctx.ellipse(bx, by + 1, bw * 0.46, bw * 0.03, 0, 0, Math.PI * 2);
+            ctx.ellipse(bx, waterY + 3, bw * 0.5, bw * 0.035, 0, 0, Math.PI * 2);
             ctx.fill();
-            drawSprite(ctx, "fishing-boat", bx, by, bw, {
+            // 水面より下は描かない（船体の下のほうが水に沈む）
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(bx - bw, 0, bw * 2, waterY);
+            ctx.clip();
+            drawSprite(ctx, "fishing-boat", bx, waterY + bob, bw, {
               flip: true, // 船首を進行方向(左)へ
-              ay: 0.92,
-              rot: Math.sin(clock * 0.0011) * 0.03,
+              ay: 0.87,
+              rot: Math.sin(clock * 0.0005 + 1) * 0.028,
             });
+            ctx.restore();
+            // 船のまわりの水面の波紋
+            ctx.lineCap = "round";
+            ctx.lineWidth = 1.4;
+            for (let i = 0; i < 2; i++) {
+              const half = bw * (0.54 - i * 0.14);
+              ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 - i * 0.2})`;
+              ctx.beginPath();
+              for (let x = -half; x <= half; x += 4) {
+                const yy = waterY + 1.5 + i * 3.5 + Math.sin(x * 0.09 + clock * 0.0009 + i) * 1.1;
+                if (x === -half) ctx.moveTo(bx + x, yy);
+                else ctx.lineTo(bx + x, yy);
+              }
+              ctx.stroke();
+            }
           }
 
           // ---- 海へ送られた言葉（飛んでいって、遠ざかりながら流れて消える） ----

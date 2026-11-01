@@ -49,11 +49,31 @@ struct Controls: View {
         }
     }
 
+    /// イラストのセットの切り替え（サムネイルは、どれも船の絵）
+    private var setRow: some View {
+        HStack(spacing: 4) {
+            ForEach(ArtStyle.allCases) { a in
+                let selected = art == a
+                Button {
+                    Haptics.tap()
+                    withAnimation(.easeInOut(duration: 0.25)) { art = a }
+                } label: {
+                    Image(a.asset("fishing-boat"))
+                        .resizable()
+                        .scaledToFit()
+                        .padding(7)
+                        .frame(maxWidth: .infinity, minHeight: 46, maxHeight: 46)
+                        .background(selected ? Color.white.opacity(0.88) : Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(selected ? Color.white : .clear, lineWidth: 2))
+                }
+                .accessibilityLabel(a.label)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+    }
+
     private var actionRow: some View {
         HStack(spacing: 4) {
-            iconButton("sparkles", selected: art == .pop, label: "ポップなイラスト", group: "art") {
-                withAnimation(.easeInOut(duration: 0.25)) { art = art == .pop ? .classic : .pop }
-            }
             iconButton("questionmark.circle", selected: false, label: "ガイド", group: "guide") { onGuide() }
         }
     }
@@ -62,6 +82,8 @@ struct Controls: View {
         let shape = RoundedRectangle(cornerRadius: 20)
         return VStack(spacing: 6) {
             themeRow
+            Rectangle().fill(.white.opacity(0.16)).frame(height: 1)
+            setRow
             Rectangle().fill(.white.opacity(0.16)).frame(height: 1)
             actionRow
         }

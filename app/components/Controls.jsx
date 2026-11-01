@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { PALETTES, THEME_ORDER } from "../themes";
 import Guide from "./Guide";
 
+// イラストのセット（サムネイルは、どれも船の絵）。左から、新しい2つ、前の2つ
+const ART_ORDER = [
+  ["classic", "ヴィンテージ"],
+  ["pop", "カラフル"],
+  ["painted", "絵画風"],
+  ["cartoon", "輪郭つきポップ"],
+];
+
 const ICONS = {
   morning: (
     <>
@@ -134,20 +142,22 @@ export default function Controls({ theme, onChange, auto, onAutoChange, art, onA
                 </Icon>
               </button>
             </div>
+            <div className="menu-sets" role="group" aria-label="イラストのセット">
+              {ART_ORDER.map(([key, name]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="menu-set"
+                  aria-pressed={art === key}
+                  aria-label={name}
+                  title={name}
+                  onClick={() => onArtChange(key)}
+                >
+                  <img src={`/art/${key}/fishing-boat.webp`} alt="" draggable="false" />
+                </button>
+              ))}
+            </div>
             <div className="menu-actions">
-              <button
-                type="button"
-                className="menu-btn-i"
-                aria-pressed={art === "pop"}
-                aria-label="ポップなイラスト"
-                title="ポップなイラスト"
-                onClick={() => onArtChange(art === "pop" ? "classic" : "pop")}
-              >
-                <Icon>
-                  <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
-                  <path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7L19 15z" />
-                </Icon>
-              </button>
               {supported && (
                 <button
                   type="button"

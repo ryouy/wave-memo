@@ -10,12 +10,32 @@ func color(_ v: RGBA, alpha: Double? = nil) -> Color {
     Color(.sRGB, red: v.x, green: v.y, blue: v.z, opacity: alpha ?? v.w)
 }
 
-/// 絵のセット。classic = 絵画風イラスト / pop = ポップなイラスト
-enum ArtStyle: String, CaseIterable {
-    case classic, pop
+/// 絵のセット（4種類）。classic = ヴィンテージ風 / pop = カラフルなポップ / painted = 絵画風 / cartoon = 輪郭つきのポップ
+enum ArtStyle: String, CaseIterable, Identifiable {
+    case classic, pop, painted, cartoon
 
-    var gullFacesLeft: Bool { self == .pop }
-    var planeSlope: Double { self == .pop ? 0.2 : 0.17 }
+    var id: String { rawValue }
+
+    /// カモメの絵が左向きか
+    var gullFacesLeft: Bool { self == .cartoon }
+
+    /// 飛行機が横切るときの上昇の傾き（新しい2つは水平に飛ぶ絵、前の2つは機首を上げた絵）
+    var planeSlope: Double {
+        switch self {
+        case .classic, .pop: 0.03
+        case .painted: 0.17
+        case .cartoon: 0.2
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .classic: "ヴィンテージ"
+        case .pop: "カラフル"
+        case .painted: "絵画風"
+        case .cartoon: "輪郭つきポップ"
+        }
+    }
 
     func asset(_ name: String) -> String { "\(rawValue)-\(name)" }
 }
@@ -48,12 +68,26 @@ enum Theme: String, CaseIterable, Identifiable {
 
     /// 太陽の軌道（楕円）上の位置 φ。東(左)の水平線で昇り、真上を通って、西(右)の水平線へ沈み、夜は地平線の下を回って朝に戻る。
     /// 切り替えは必ず φ が増える向きに進む。月は太陽の反対側(φ+π)にいる。
+    /// 月が空にいるのは、太陽が完全に沈んでから、また顔を出すまでのあいだだけ（朝夕に、太陽と月が同時に水平線の上に出ないように）
+    static let moonFrom = Double.pi + 0.73
+    static let moonTo = Double.pi * 2 - 0.73
+
+    /// 太陽の位置 φ から、月の軌道上の位置 ψ を決める。空にいない間は、水平線の下で待つ
+    static func moonPsi(_ phi: Double) -> Double {
+        let tau = Double.pi * 2
+        var p = phi.truncatingRemainder(dividingBy: tau)
+        if p < 0 { p += tau }
+        if p >= moonFrom && p <= moonTo { return -0.5 + (p - moonFrom) / (moonTo - moonFrom) * (Double.pi + 1.0) }
+        if p < Double.pi / 2 { return Double.pi + 0.75 } // 日の出のあとは、右の水平線の下
+        return p < moonFrom ? -0.75 : Double.pi + 0.75 // 日没までは左の水平線の下で出番を待つ
+    }
+
     var phi: Double {
         switch self {
         case .morning: Double.pi * 2 - 0.14
         case .day: Double.pi / 2
         case .evening: Double.pi + 0.083
-        case .night: Double.pi * 1.3
+        case .night: Theme.moonFrom + 0.35 * (Theme.moonTo - Theme.moonFrom) // 月が左の高いところにいる
         }
     }
 }
