@@ -28,8 +28,6 @@ export const PALETTES = {
     sunCore: [255, 230, 160],
     sunGlow: [255, 190, 110],
     sunReflect: [255, 225, 170],
-    sunK: 0.5,
-    sunX: 0.3,
     sunScale: 1,
   },
   day: {
@@ -59,8 +57,6 @@ export const PALETTES = {
     sunCore: [255, 248, 200],
     sunGlow: [255, 240, 170],
     sunReflect: [255, 255, 255],
-    sunK: -3.4,
-    sunX: 0.58,
     sunScale: 0.6,
   },
   evening: {
@@ -90,8 +86,6 @@ export const PALETTES = {
     sunCore: [255, 210, 120],
     sunGlow: [255, 150, 60],
     sunReflect: [255, 200, 120],
-    sunK: 0.3,
-    sunX: 0.66,
     sunScale: 1,
   },
   night: {
@@ -118,12 +112,10 @@ export const PALETTES = {
       [28, 44, 104, 0.95],
       [10, 20, 70, 0.95],
     ],
-    sunCore: [240, 244, 255],
-    sunGlow: [150, 170, 255],
-    sunReflect: [200, 215, 255],
-    sunK: -4.5,
-    sunX: 0.3,
-    sunScale: 0.5,
+    sunCore: [255, 210, 120],
+    sunGlow: [255, 150, 60],
+    sunReflect: [255, 200, 120],
+    sunScale: 1,
   },
 };
 

@@ -9,13 +9,30 @@ const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
 const rand = (a, b) => a + Math.random() * (b - a);
 
 const clone = (v) => (Array.isArray(v) ? v.map(clone) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clone(x)])) : v);
-// 現在のパレット(cur)を目標(tgt)へ近づける
-function approach(cur, tgt, k) {
-  for (const key of Object.keys(cur)) {
-    const a = cur[key];
-    const b = tgt[key];
-    if (typeof a === "number") cur[key] = a + (b - a) * k;
-    else if (a && typeof a === "object") approach(a, b, k);
+const MOON = { core: [240, 244, 255], glow: [150, 170, 255], reflect: [200, 215, 255], scale: 0.5 };
+
+const TAU = Math.PI * 2;
+// 太陽の軌道（楕円）。東(左)の水平線で昇り、真上を通って、西(右)の水平線へ沈み、夜は地平線の下を回って朝に戻る。
+// φ は軌道上の位置。時間帯の切り替えは、必ずこの向き(φが増える向き)に進む。月は太陽の反対側(φ+π)にいる。
+const THEME_PHI = { morning: TAU - 0.14, day: Math.PI / 2, evening: Math.PI + 0.083, night: Math.PI * 1.3 };
+// 時間帯の並び(φの小さい順)。空・海・星などの色は、いまの φ に応じて、この隣り合う2つを混ぜる
+const KEYFRAMES = [
+  ["day", THEME_PHI.day],
+  ["evening", THEME_PHI.evening],
+  ["night", THEME_PHI.night],
+  ["morning", THEME_PHI.morning],
+  ["day", THEME_PHI.day + TAU],
+];
+const ORBIT_X = 0.3; // 軌道の横の広がり（画面幅比）
+const SUN_K = 3.6; // 太陽の最高点（太陽の半径の何倍、水平線の上か）
+const MOON_K = 5;
+const smooth = (t) => t * t * (3 - 2 * t);
+function mixInto(out, a, b, t) {
+  for (const key of Object.keys(out)) {
+    const va = a[key];
+    const vb = b[key];
+    if (typeof va === "number") out[key] = va + (vb - va) * t;
+    else if (va && typeof va === "object") mixInto(out[key], va, vb, t);
   }
 }
 const STARS = Array.from({ length: 80 }, (_, i) => {
@@ -72,6 +89,99 @@ function spriteCanvas(im, name, w, tint) {
   return cv;
 }
 
+// 縦長のスマホで空く、画面下の砂浜の飾り: 砂の波紋・足あと・小石・ヒトデ。時間帯の色味に合わせて暗くなる
+function drawSandDetails(ctx, pal, W, H, gy) {
+  const tn = pal.tint;
+  const k = tn[3];
+  const mix = (r, g, b) => [r * (1 - k) + tn[0] * k, g * (1 - k) + tn[1] * k, b * (1 - k) + tn[2] * k];
+  const brown = mix(122, 92, 64);
+  const rgb = (c, a) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
+  ctx.save();
+  // 砂の風紋
+  ctx.lineCap = "round";
+  for (let i = 0; i < 7; i++) {
+    const y0 = gy + H * 0.035 + i * H * 0.027;
+    ctx.strokeStyle = rgb(brown, 0.075 * (1 - i * 0.07));
+    ctx.lineWidth = 1.2 + i * 0.25;
+    ctx.beginPath();
+    for (let x = 0; x <= W + 8; x += 8) {
+      const yy = y0 + Math.sin(x * 0.012 + i * 1.9) * (2 + i * 0.8) + Math.sin(x * 0.031 + i) * 1.2;
+      if (x === 0) ctx.moveTo(x, yy);
+      else ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+  // 足あと: 下から海のほうへ、左右交互に続く（遠いほど小さく薄い）
+  const n = 11;
+  const yNear = H * 0.985;
+  const yFar = gy + H * 0.055;
+  for (let i = 0; i < n; i++) {
+    const u = i / (n - 1);
+    const y = yNear - u * (yNear - yFar);
+    const side = i % 2 ? 1 : -1;
+    const x = W * (0.34 + 0.07 * Math.sin(u * 3.2)) + side * W * 0.02 * (1 - u * 0.4);
+    const sc = 1 - u * 0.45;
+    const a = 0.17 - u * 0.09;
+    ctx.fillStyle = rgb(brown, a);
+    ctx.beginPath();
+    ctx.ellipse(x, y, W * 0.011 * sc, W * 0.019 * sc, side * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x - side * W * 0.002 * sc, y + W * 0.03 * sc, W * 0.0075 * sc, W * 0.0085 * sc, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // 小石
+  const pebbles = [
+    [0.12, 0.915, 0.014],
+    [0.2, 0.955, 0.009],
+    [0.63, 0.935, 0.011],
+    [0.9, 0.975, 0.016],
+    [0.5, 0.99, 0.008],
+  ];
+  for (const [fx, fy, fr] of pebbles) {
+    ctx.fillStyle = rgb(mix(150, 130, 112), 0.55);
+    ctx.beginPath();
+    ctx.ellipse(W * fx, H * fy, W * fr * 1.3, W * fr, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(W * fx - W * fr * 0.3, H * fy - W * fr * 0.3, W * fr * 0.45, W * fr * 0.3, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // ヒトデ
+  const cx = W * 0.77;
+  const cy = H * 0.925;
+  const R = W * 0.06;
+  const star = mix(238, 126, 94);
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.35);
+  ctx.beginPath();
+  for (let a = 0; a <= 360; a += 4) {
+    const th = (a * Math.PI) / 180;
+    const rr = R * (0.46 + 0.54 * Math.pow(Math.abs(Math.cos(2.5 * th)), 0.8));
+    const px = Math.cos(th) * rr;
+    const py = Math.sin(th) * rr;
+    if (a === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = rgb(star, 0.92);
+  ctx.fill();
+  ctx.strokeStyle = rgb(mix(196, 86, 62), 0.55);
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255, 232, 214, 0.7)";
+  for (let arm = 0; arm < 5; arm++) {
+    const th = (arm * 72 * Math.PI) / 180;
+    for (let q = 0.28; q < 0.9; q += 0.2) {
+      ctx.beginPath();
+      ctx.arc(Math.cos(th) * R * q, Math.sin(th) * R * q, R * 0.035, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 export default function P5Canvas({ theme, art }) {
   const sketchRef = useRef(null);
   const themeRef = useRef(theme);
@@ -82,6 +192,7 @@ export default function P5Canvas({ theme, art }) {
   useEffect(() => {
     let p5Instance;
     let resizer;
+    let onSend;
     let cancelled = false;
 
     const startP5 = async () => {
@@ -103,14 +214,20 @@ export default function P5Canvas({ theme, art }) {
         let nextBigAt = rand(9000, 14000); // 文字をさらう大きな波は、たまにだけ来る
         let birds = [];
         let clouds = [];
-        let nextCloud = rand(1500, 4000);
+        let nextCloud = rand(3000, 8000);
         let boatClock = 20000; // 起動後まもなく船が見えるように
         let bubbles = []; // 波が引いたあとの砂浜に残る、しゅわしゅわした泡
         let wetBottom = 0;
         let plane = null;
-        let nextBird = rand(2500, 5000);
-        let nextPlane = rand(12000, 20000);
+        let words = []; // 「言葉を海へ」で飛ばされた言葉
+        let nextBird = rand(4000, 9000);
+        let nextPlane = rand(20000, 35000);
         const pal = clone(PALETTES[themeRef.current]);
+        let phi = THEME_PHI[themeRef.current]; // 太陽の軌道上の位置
+        let omega = 0;
+        let artCur = artRef.current; // イラストの切り替えは、ふわっと重ねて入れ替える
+        let artPrev = artCur;
+        let artFade = 1;
         const sprites = {};
         for (const [key, set] of Object.entries(ART_SETS)) {
           for (const n of SPRITE_NAMES) {
@@ -119,7 +236,7 @@ export default function P5Canvas({ theme, art }) {
             sprites[`${key}/${n}`] = im;
           }
         }
-        const artSet = () => ART_SETS[artRef.current] || ART_SETS.classic;
+        const artSet = () => ART_SETS[artCur] || ART_SETS.classic;
 
         const size = () => ({
           w: sketchRef.current?.clientWidth || window.innerWidth,
@@ -128,41 +245,47 @@ export default function P5Canvas({ theme, art }) {
 
         const spawnBirds = (W, H, horizonY) => {
           const away = Math.random() < 0.4;
-          const n = Math.random() < 0.35 ? 2 + Math.floor(Math.random() * 2) : 1;
+          const r = Math.random();
+          // 1羽が多く、ときどき小さな群れ・大きめの群れ
+          const n = r < 0.55 ? 1 : r < 0.85 ? 2 + Math.floor(Math.random() * 2) : 4 + Math.floor(Math.random() * 2);
           const dir = Math.random() < 0.5 ? 1 : -1;
-          const baseY = rand(0.08, 0.22) * H;
+          const baseY = rand(0.05, 0.27) * H;
           const baseX = away ? rand(0.2, 0.8) * W : dir > 0 ? -40 : W + 40;
-          const dur = away ? rand(8000, 11000) : rand(13000, 19000);
+          const dur = away ? rand(8000, 14000) : rand(11000, 26000);
+          const sizeBase = rand(0.7, 1.4);
+          const rate = rand(0.005, 0.011); // 羽ばたきの速さも、群れごとに違う
           for (let i = 0; i < n; i++) {
             birds.push({
               away,
               dir,
-              age: -i * 450, // 群れは少しずつずらして飛ばす
-              dur,
-              x0: baseX - dir * i * 36,
-              y0: baseY + i * rand(10, 26),
+              age: -i * rand(300, 700), // 群れは少しずつずらして飛ばす
+              dur: dur * rand(0.92, 1.08),
+              x0: baseX - dir * i * rand(26, 50),
+              y0: baseY + i * rand(8, 30) * (Math.random() < 0.5 ? 1 : -1),
               // 奥へ消える鳥は水平線の少し上へ向かう
               x1: baseX + rand(-0.12, 0.12) * W,
               y1: horizonY - 6,
-              size: rand(0.8, 1.15),
+              size: sizeBase * rand(0.85, 1.15),
               ph: rand(0, 6.28),
+              rate: rate * rand(0.9, 1.1),
               sway: rand(0.6, 1.4),
             });
           }
         };
-
         const spawnCloud = (W, H) => {
           const dir = Math.random() < 0.5 ? 1 : -1;
-          const w = W * rand(0.14, 0.26);
-          const n = 7 + Math.floor(Math.random() * 4);
+          const frac = rand(0.1, 0.42); // 小さな雲から、大きな雲まで
+          const w = W * frac;
+          const tall = rand(0.5, 1.4); // 平たい雲 / もこもこした雲
+          const n = Math.max(5, Math.min(13, Math.round(5 + frac * 18 + rand(-1, 2))));
           const puffs = [];
           for (let i = 0; i < n; i++) {
             const u = (i + 0.5) / n;
             const hump = Math.sin(u * Math.PI);
             puffs.push({
               dx: (u - 0.5) * w,
-              dy: -hump * w * 0.05 * rand(0.6, 1.2) + rand(-0.01, 0.01) * w,
-              r: w * (0.08 + 0.1 * hump) * rand(0.8, 1.15),
+              dy: -hump * w * 0.05 * tall * rand(0.6, 1.2) + rand(-0.01, 0.01) * w,
+              r: w * (0.07 + 0.11 * hump) * rand(0.75, 1.2),
             });
           }
           clouds.push({
@@ -170,9 +293,9 @@ export default function P5Canvas({ theme, art }) {
             w,
             puffs,
             x: dir > 0 ? -w * 0.6 : W + w * 0.6,
-            y: rand(0.05, 0.22) * H,
-            vx: (W + w * 1.2) / rand(70000, 110000),
-            alpha: rand(0.7, 1),
+            y: rand(0.04, 0.27) * H,
+            vx: (W + w * 1.2) / (rand(70000, 150000) * (1.2 - frac * 0.8)),
+            alpha: rand(0.45, 1),
           });
         };
 
@@ -195,20 +318,60 @@ export default function P5Canvas({ theme, art }) {
         };
 
         // 画像を (x, y) に描く。ax/ay は画像上の基準点(0〜1)、flip で左右反転、sy で縦方向の伸縮(羽ばたき)
-        const drawSprite = (ctx, name, x, y, w, o = {}) => {
-          const im = sprites[`${artRef.current}/${name}`];
+        const drawOne = (ctx, set, name, x, y, w, o, alpha) => {
+          const im = sprites[`${set}/${name}`];
           if (!im || !im.complete || !im.naturalWidth) return 0;
           const h = (w * im.naturalHeight) / im.naturalWidth;
-          const cv = spriteCanvas(im, `${artRef.current}/${name}`, w, pal.tint);
+          const cv = spriteCanvas(im, `${set}/${name}`, w, pal.tint);
+          const flip = o.gullLeft !== undefined ? (ART_SETS[set].gullFacesLeft ? !o.gullLeft : o.gullLeft) : o.flip;
           ctx.save();
           ctx.translate(x, y);
           if (o.rot) ctx.rotate(o.rot);
-          ctx.scale(o.flip ? -1 : 1, o.sy || 1);
-          if (o.alpha !== undefined) ctx.globalAlpha = o.alpha;
+          ctx.scale(flip ? -1 : 1, o.sy || 1);
+          ctx.globalAlpha = alpha;
           ctx.drawImage(cv, -w * (o.ax ?? 0.5), -h * (o.ay ?? 0.5), w, h);
           ctx.restore();
           return h;
         };
+        const drawSprite = (ctx, name, x, y, w, o = {}) => {
+          const a = o.alpha ?? 1;
+          if (artFade < 1) {
+            drawOne(ctx, artPrev, name, x, y, w, o, a * (1 - artFade));
+            return drawOne(ctx, artCur, name, x, y, w, o, a * artFade);
+          }
+          return drawOne(ctx, artCur, name, x, y, w, o, a);
+        };
+
+        // 入力欄の言葉が、水平線の近くまで飛んでいき、波に乗って流れていく
+        onSend = (e) => {
+          const d = e.detail;
+          if (!d?.lines?.length) return;
+          const box = sketchRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
+          const W = p.width;
+          const H = p.height;
+          const dir = Math.random() < 0.5 ? 1 : -1;
+          const tx = rand(0.22, 0.78) * W;
+          const x0 = d.cx - box.left;
+          const y0 = d.cy - box.top;
+          const ty = H * HORIZON + H * rand(0.035, 0.07);
+          words.push({
+            lines: d.lines,
+            fs: d.fs,
+            x0,
+            y0,
+            tx,
+            ty,
+            cx: (x0 + tx) / 2 + rand(-0.15, 0.15) * W,
+            cy: Math.min(y0, ty) - H * 0.18,
+            dir,
+            vx: dir * W * rand(0.00002, 0.00005),
+            ph: rand(0, 6.28),
+            age: 0,
+            flyMs: 3200,
+            floatMs: 16000,
+          });
+        };
+        window.addEventListener("send-words", onSend);
 
         p.setup = () => {
           const { w, h } = size();
@@ -223,7 +386,38 @@ export default function P5Canvas({ theme, art }) {
           const dt = Math.min(p.deltaTime || 16, 50);
           phaseTime += dt;
           clock += dt;
-          approach(pal, PALETTES[themeRef.current], 1 - Math.exp(-dt / 350));
+          // 太陽の軌道上の位置を、必ず進む向きに動かす（時間を戻す選択でも、夕・夜を回ってから朝になる）
+          const phiTarget = THEME_PHI[themeRef.current];
+          let delta = (((phiTarget - phi) % TAU) + TAU) % TAU;
+          if (delta > TAU - 0.01) delta = 0;
+          const desired = delta < 0.002 ? 0 : Math.min(0.9, delta * 1.6 + 0.05);
+          omega += (desired - omega) * (1 - Math.exp(-dt / 250));
+          phi = (phi + Math.min(delta, (omega * dt) / 1000)) % TAU;
+          // 空・海・砂・星・雲などの色は、いまの軌道上の位置から決める（夕→朝なら、夜の暗さを通る）
+          const ph = phi < Math.PI / 2 ? phi + TAU : phi;
+          let seg = 0;
+          while (seg < KEYFRAMES.length - 2 && ph >= KEYFRAMES[seg + 1][1]) seg++;
+          const [nameA, angA] = KEYFRAMES[seg];
+          const [nameB, angB] = KEYFRAMES[seg + 1];
+          mixInto(pal, PALETTES[nameA], PALETTES[nameB], smooth(Math.min(1, Math.max(0, (ph - angA) / (angB - angA)))));
+          // 文字の色・にじみも、いまの空の明るさに合わせる
+          if (p.frameCount % 5 === 0) {
+            const stage = sketchRef.current?.parentElement;
+            if (stage) {
+              const st = Math.min(1, Math.max(0, pal.stars));
+              stage.style.setProperty("--ink", `rgb(${pal.ink.map((v) => v | 0).join(",")})`);
+              stage.style.setProperty(
+                "--glow",
+                `rgba(${[255 - 247 * st, 255 - 245 * st, 255 - 207 * st].map((v) => v | 0).join(",")}, ${0.7 + 0.05 * st})`,
+              );
+            }
+          }
+          if (artRef.current !== artCur) {
+            artPrev = artCur;
+            artCur = artRef.current;
+            artFade = 0;
+          }
+          artFade = Math.min(1, artFade + dt / 450);
           t += dt * 0.0004;
 
           if (phase === "wait" && phaseTime > waitMs) {
@@ -231,7 +425,7 @@ export default function P5Canvas({ theme, art }) {
             phaseTime = 0;
             if (clock >= nextBigAt) {
               // 大きな波: 文字のある砂浜まで下りてくる
-              target = rand(0.8, 0.93);
+              target = rand(0.6, 0.96); // どこまで迫るかは、そのときしだい
               downMs = 5500;
               upMs = 7000;
               swept = false;
@@ -267,7 +461,7 @@ export default function P5Canvas({ theme, art }) {
           const amp = 8 + near * 16;
           const freq = 0.014 - near * 0.006;
           const waveY = (x) =>
-            baseY + Math.sin(x * freq + t * 1.5) * amp + Math.sin(x * freq * 2.5 + t * 2.2) * amp * 0.33;
+            baseY + Math.sin(x * freq + t * 0.55) * amp + Math.sin(x * freq * 2.5 + t * 0.8) * amp * 0.33;
 
           // ---- 空と砂浜 ----
           const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
@@ -284,23 +478,44 @@ export default function P5Canvas({ theme, art }) {
           ctx.fillStyle = sand;
           ctx.fillRect(0, horizonY, W, H - horizonY);
 
-          // ---- 太陽（水平線より下は描かない） ----
-          const r = Math.min(W, H) * 0.11 * pal.sunScale;
-          const sx = W * pal.sunX;
-          const sy = horizonY + r * pal.sunK;
+          // ---- 太陽と月（別の天体。水平線より下は描かない） ----
+          const unit = Math.min(W, H) * 0.11;
+          const phiMoon = phi + Math.PI;
+          const sunR = unit * pal.sunScale;
+          const moonR = unit * MOON.scale;
+          const bodies = [
+            { x: W * (0.5 - ORBIT_X * Math.cos(phi)), r: sunR, fade: 1, k: -SUN_K * Math.sin(phi), core: pal.sunCore, glow: pal.sunGlow, refl: pal.sunReflect, moon: false },
+            { x: W * (0.5 - ORBIT_X * Math.cos(phiMoon)), r: moonR, k: -MOON_K * Math.sin(phiMoon), core: MOON.core, glow: MOON.glow, refl: MOON.reflect, moon: true, fade: 0.38 + 0.62 * Math.min(1, Math.max(0, pal.stars)) },
+          ];
+          for (const b of bodies) {
+            b.y = horizonY + b.r * b.k;
+            b.vis = Math.max(0, Math.min(1, 1.5 - b.k)); // 沈みきったら反射も消える
+          }
           ctx.save();
           ctx.beginPath();
           ctx.rect(0, 0, W, horizonY);
           ctx.clip();
           p.noStroke();
-          for (let i = 6; i >= 1; i--) {
-            p.fill(pal.sunGlow[0], pal.sunGlow[1], pal.sunGlow[2], 14);
-            p.circle(sx, sy, r * (1 + i * 0.55));
+          for (const b of bodies) {
+            if (b.k > 2.4) continue;
+            ctx.globalAlpha = b.fade; // 昼の月は淡く
+            for (let i = 6; i >= 1; i--) {
+              p.fill(b.glow[0], b.glow[1], b.glow[2], 14);
+              p.circle(b.x, b.y, b.r * (1 + i * 0.55));
+            }
+            p.fill(b.core[0], b.core[1], b.core[2]);
+            p.circle(b.x, b.y, b.r * 2);
+            if (b.moon) {
+              p.fill(196, 204, 230, 80);
+              p.circle(b.x - b.r * 0.3, b.y - b.r * 0.2, b.r * 0.45);
+              p.circle(b.x + b.r * 0.35, b.y + b.r * 0.25, b.r * 0.3);
+              p.circle(b.x + b.r * 0.1, b.y - b.r * 0.55, b.r * 0.2);
+            } else {
+              p.fill(255, 245, 210, 200);
+              p.circle(b.x, b.y, b.r * 1.5);
+            }
           }
-          p.fill(pal.sunCore[0], pal.sunCore[1], pal.sunCore[2]);
-          p.circle(sx, sy, r * 2);
-          p.fill(255, 245, 210, 200);
-          p.circle(sx, sy, r * 1.5);
+          ctx.globalAlpha = 1;
           ctx.restore();
 
           // ---- 星（夜だけ） ----
@@ -317,28 +532,28 @@ export default function P5Canvas({ theme, art }) {
           // ---- 鳥と飛行機 ----
           if (clock > nextBird) {
             spawnBirds(W, H, horizonY);
-            nextBird = clock + rand(7000, 16000);
+            nextBird = clock + rand(22000, 50000);
           }
           if (!plane && clock > nextPlane) {
             const dir = Math.random() < 0.5 ? 1 : -1;
-            const pw = clamp(Math.min(W, H) * 0.2, 56, 150);
+            const pw = clamp(Math.min(W, H) * 0.2 * rand(0.65, 1.4), 44, 190);
             plane = {
               dir,
               w: pw,
               x0: dir > 0 ? -pw : W + pw,
               x: dir > 0 ? -pw : W + pw,
-              y0: rand(0.2, 0.3) * H,
-              vx: (W + pw * 2) / 26000,
+              y0: rand(0.12, 0.32) * H,
+              vx: (W + pw * 2) / rand(20000, 38000),
             };
-            nextPlane = clock + rand(35000, 60000);
+            nextPlane = clock + rand(80000, 150000);
           }
           ctx.save();
           ctx.beginPath();
           ctx.rect(0, 0, W, horizonY);
           ctx.clip();
-          if (clock > nextCloud && clouds.length < 3) {
+          if (clock > nextCloud && clouds.length < 2) {
             spawnCloud(W, H);
-            nextCloud = clock + rand(15000, 35000);
+            nextCloud = clock + rand(35000, 80000);
           }
           clouds = clouds.filter((c) => c.x > -c.w * 0.8 && c.x < W + c.w * 0.8);
           for (const c of clouds) {
@@ -361,10 +576,10 @@ export default function P5Canvas({ theme, art }) {
               y = b.y0 + Math.sin(k * 6 * b.sway + b.ph) * H * 0.02;
               s = clamp(Math.min(W, H) * 0.06, 26, 70) * b.size;
             }
-            const flap = Math.sin(clock * 0.008 + b.ph);
+            const flap = Math.sin(clock * b.rate + b.ph);
             const left = b.away ? b.x1 < b.x0 : b.dir < 0;
             drawSprite(ctx, "flying-seagull", x, y, s, {
-              flip: artSet().gullFacesLeft ? !left : left,
+              gullLeft: left,
               sy: 1 + flap * 0.16,
               rot: (left ? 1 : -1) * flap * 0.05,
               alpha: a,
@@ -392,19 +607,22 @@ export default function P5Canvas({ theme, art }) {
           ctx.closePath();
           ctx.fill();
 
-          // 太陽の反射（海面のきらめき）
-          for (let y = horizonY + 4; y < baseY - 6; y += 7) {
-            const k = (y - horizonY) / Math.max(1, H * 0.5);
-            const w = r * (0.5 + k * 1.6) * (0.7 + 0.3 * Math.sin(y * 0.4 + t * 3));
-            p.fill(pal.sunReflect[0], pal.sunReflect[1], pal.sunReflect[2], Math.max(0, 120 - k * 150));
-            p.rect(sx - w / 2, y, w, 2.5, 2);
+          // 太陽・月の反射（海面のきらめき）
+          for (const b of bodies) {
+            if (b.vis < 0.02) continue;
+            for (let y = horizonY + 4; y < baseY - 6; y += 7) {
+              const k = (y - horizonY) / Math.max(1, H * 0.5);
+              const w = b.r * (0.5 + k * 1.6) * (0.7 + 0.3 * Math.sin(y * 0.4 + t * 0.9));
+              p.fill(b.refl[0], b.refl[1], b.refl[2], Math.max(0, 120 - k * 150) * b.vis * b.fade);
+              p.rect(b.x - w / 2, y, w, 2.5, 2);
+            }
           }
 
           // 遠近感のあるさざ波: 水平線付近は細かく密に、手前ほど太く間隔が広い。ゆっくり手前へ寄ってくる
           const seaH = baseY - horizonY;
           if (seaH > 12) {
             const ROWS = 4;
-            const drift = (t * 0.2) % 1;
+            const drift = (t * 0.035) % 1;
             const strength = Math.min(1, seaH / (H * 0.18)) * (pal.foam / 0.6);
             ctx.lineCap = "round";
             for (let i = 0; i < ROWS; i++) {
@@ -416,10 +634,10 @@ export default function P5Canvas({ theme, art }) {
               ctx.strokeStyle = `rgba(255, 255, 255, ${Math.sin(Math.PI * d) * 0.3 * strength})`;
               ctx.lineWidth = 0.8 + depth * 2.6;
               ctx.setLineDash([20 + depth * 220, 14 + depth * 120]);
-              ctx.lineDashOffset = -t * (30 + depth * 120) * 3 + i * 40;
+              ctx.lineDashOffset = -t * (30 + depth * 120) * 0.35 + i * 40;
               ctx.beginPath();
               for (let x = 0; x <= W + 8; x += 8) {
-                const yy = y + Math.sin((x / wl) * 6.283 + t * 1.2 + i * 1.7) * (0.6 + depth * 5);
+                const yy = y + Math.sin((x / wl) * 6.283 + t * 0.3 + i * 1.7) * (0.6 + depth * 5);
                 if (x === 0) ctx.moveTo(x, yy);
                 else ctx.lineTo(x, yy);
               }
@@ -454,6 +672,43 @@ export default function P5Canvas({ theme, art }) {
             });
           }
 
+          // ---- 海へ送られた言葉（飛んでいって、遠ざかりながら流れて消える） ----
+          words = words.filter((w) => w.age < w.flyMs + w.floatMs);
+          const wordsDark = pal.stars > 0.5;
+          for (const w of words) {
+            w.age += dt;
+            let x, y, sc, a, rot;
+            if (w.age < w.flyMs) {
+              const u = ease(w.age / w.flyMs);
+              x = (1 - u) * (1 - u) * w.x0 + 2 * (1 - u) * u * w.cx + u * u * w.tx;
+              y = (1 - u) * (1 - u) * w.y0 + 2 * (1 - u) * u * w.cy + u * u * w.ty;
+              sc = 1 - 0.62 * u;
+              a = 1;
+              rot = Math.sin(u * Math.PI) * 0.12 * w.dir;
+            } else {
+              const f = w.age - w.flyMs;
+              const q = f / w.floatMs;
+              x = w.tx + w.vx * f;
+              y = w.ty - Math.min(f * 0.0005, H * 0.015) + Math.sin(clock * 0.0014 + w.ph) * 3;
+              sc = 0.38 - 0.12 * q;
+              a = Math.pow(1 - q, 1.3);
+              rot = Math.sin(clock * 0.0011 + w.ph) * 0.03;
+            }
+            const size = Math.max(9, w.fs * sc);
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rot);
+            ctx.font = `${size}px "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowColor = wordsDark ? `rgba(8, 10, 48, ${0.7 * a})` : `rgba(255, 255, 255, ${0.6 * a})`;
+            ctx.shadowBlur = 8 * sc;
+            ctx.fillStyle = rgba(pal.ink, a);
+            const n = w.lines.length;
+            w.lines.forEach((ln, i) => ctx.fillText(ln, 0, (i - (n - 1) / 2) * size * 1.3));
+            ctx.restore();
+          }
+
           // ---- 波が引いたあとの濡れた砂 ----
           const frontBottom = baseY + foamHeight + amp * 0.5;
           if (frontBottom > wetBottom) wetBottom = frontBottom;
@@ -468,7 +723,7 @@ export default function P5Canvas({ theme, art }) {
               else ctx.lineTo(x, y0);
             }
             for (let x = W + 6; x >= 0; x -= 6) {
-              ctx.lineTo(x, wetBottom + Math.sin(x * 0.02 + t) * 5);
+              ctx.lineTo(x, wetBottom + Math.sin(x * 0.02 + t * 0.3) * 5);
             }
             ctx.closePath();
             ctx.fill();
@@ -482,7 +737,7 @@ export default function P5Canvas({ theme, art }) {
             else ctx.lineTo(x, waveY(x));
           }
           for (let x = W + 6; x >= 0; x -= 6) {
-            const wob = Math.sin(x * 0.015 - t * 1.6) * 5;
+            const wob = Math.sin(x * 0.015 - t * 0.55) * 5;
             ctx.lineTo(x, waveY(x) + foamHeight + wob);
           }
           ctx.closePath();
@@ -494,10 +749,15 @@ export default function P5Canvas({ theme, art }) {
             for (let i = 0; i < n; i++) {
               const x = Math.random() * W;
               const yTop = waveY(x) + foamHeight * 0.8;
+              const y = yTop + Math.pow(Math.random(), 1.6) * Math.max(2, wetBottom - yTop);
+              // 遠近感: 奥(水平線寄り)ほど小さく・薄く・多く、手前ほど大きく・はっきり・少なく
+              const d = Math.max(0, Math.min(1, (y - horizonY) / (H - horizonY)));
+              if (Math.random() > 1 - d * 0.55) continue;
               bubbles.push({
                 x,
-                y: yTop + Math.pow(Math.random(), 1.6) * Math.max(2, wetBottom - yTop),
-                r: rand(0.8, 3),
+                y,
+                d,
+                r: rand(0.8, 2.4) * (0.25 + 2.2 * d * d),
                 age: 0,
                 life: rand(1200, 3200),
                 ph: rand(0, 6.28),
@@ -510,10 +770,10 @@ export default function P5Canvas({ theme, art }) {
             const k = b.age / b.life;
             const pop = k > 0.85 ? (k - 0.85) / 0.15 : 0;
             const bx = b.x + Math.sin(clock * 0.002 + b.ph) * 1.5;
-            const a = pal.foam * (1 - k * 0.6) * (1 - pop);
+            const a = pal.foam * (1 - k * 0.6) * (1 - pop) * (0.5 + 0.5 * b.d);
             ctx.fillStyle = `rgba(255, 255, 255, ${a * 0.4})`;
             ctx.strokeStyle = `rgba(255, 255, 255, ${a})`;
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 0.6 + b.d * 1.0;
             ctx.beginPath();
             ctx.arc(bx, b.y, b.r * (1 + pop * 1.2), 0, Math.PI * 2);
             if (!pop) ctx.fill();
@@ -534,7 +794,7 @@ export default function P5Canvas({ theme, art }) {
           ctx.lineWidth = 1 + near * 1.5;
           ctx.beginPath();
           for (let x = 0; x <= W + 6; x += 6) {
-            const yy = waveY(x) - foamHeight * 1.1 + Math.sin(x * freq * 1.7 - t * 1.4) * amp * 0.4;
+            const yy = waveY(x) - foamHeight * 1.1 + Math.sin(x * freq * 1.7 - t * 0.5) * amp * 0.4;
             if (x === 0) ctx.moveTo(x, yy);
             else ctx.lineTo(x, yy);
           }
@@ -545,26 +805,31 @@ export default function P5Canvas({ theme, art }) {
           const rw = clamp(Math.min(W * 0.28, H * 0.42), 100, 330);
           const sw = clamp(m * 0.075, 26, 64);
           const cw = clamp(m * 0.11, 44, 110);
+          // 縦長のスマホは、キーボードを出すと岩やカニが上へ来るので、最初から画面の下のほうに置く。その下の砂浜には足あとや星の砂を置く
+          const phone = H / W >= 1.6;
+          const gy = phone ? H * 0.86 : H; // 岩・カニ・貝の接地線
+          if (phone) drawSandDetails(ctx, pal, W, H, gy);
           // カニは左右の岩のあいだだけを歩く。貝はその中央寄りに置く
           const half = Math.max(W * 0.05, W / 2 - rw * 1.25 - cw * 0.5);
-          drawSprite(ctx, "scallop-shell", W * 0.5 - half * 0.6, H * 0.975, sw, { rot: -0.35 });
+          drawSprite(ctx, "scallop-shell", W * 0.5 - half * 0.6, gy - H * 0.025, sw, { rot: -0.35 });
           const crabX = W * 0.5 + Math.sin(clock * 0.000524) * half;
+          const crabY = gy - H * 0.035;
           ctx.fillStyle = "rgba(0, 0, 0, 0.14)";
           ctx.beginPath();
-          ctx.ellipse(crabX, H * 0.965, cw * 0.42, cw * 0.05, 0, 0, Math.PI * 2);
+          ctx.ellipse(crabX, crabY, cw * 0.42, cw * 0.05, 0, 0, Math.PI * 2);
           ctx.fill();
-          drawSprite(ctx, "sand-crab", crabX, H * 0.965 - Math.abs(Math.sin(clock * 0.012)) * cw * 0.03, cw, {
+          drawSprite(ctx, "sand-crab", crabX, crabY - Math.abs(Math.sin(clock * 0.012)) * cw * 0.03, cw, {
             ay: 0.88,
             rot: Math.sin(clock * 0.012) * 0.04,
           });
           const rock = (x, w2, flip) => {
-            const rim = sprites[`${artRef.current}/shore-rock`];
+            const rim = sprites[`${artCur}/shore-rock`];
             const rh = w2 * (rim && rim.naturalWidth ? rim.naturalHeight / rim.naturalWidth : 0.58);
             ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
             ctx.beginPath();
-            ctx.ellipse(x, H - rh * 0.1, w2 * 0.52, rh * 0.1, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, gy - rh * 0.1, w2 * 0.52, rh * 0.1, 0, 0, Math.PI * 2);
             ctx.fill();
-            drawSprite(ctx, "shore-rock", x, H + rh * 0.16, w2, { ay: 1, flip });
+            drawSprite(ctx, "shore-rock", x, gy + rh * 0.16, w2, { ay: 1, flip });
           };
           rock(rw * 0.42, rw, false);
           rock(rw * 0.98, rw * 0.5, true);
@@ -598,6 +863,7 @@ export default function P5Canvas({ theme, art }) {
 
     return () => {
       cancelled = true;
+      if (onSend) window.removeEventListener("send-words", onSend);
       resizer?.disconnect();
       if (p5Instance) p5Instance.remove();
     };

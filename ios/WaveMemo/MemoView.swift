@@ -4,20 +4,21 @@ import UIKit
 /// 画面下に置く入力欄。下端を固定して、行が増えると既存の行が上へせり上がる。
 struct MemoView: View {
     @ObservedObject var model: MemoModel
-    let theme: Theme
+    let ink: RGBA
+    let glow: RGBA
     let screenWidth: CGFloat
 
     var body: some View {
         let fs = min(33.6, max(17.6, screenWidth * 0.042))
         let w = min(screenWidth * 0.94, fs * 15)
-        let ink = color(theme.palette.ink, alpha: 1)
+        let inkColor = color(ink, alpha: 1)
         ZStack(alignment: .top) {
-            MemoTextView(model: model, fontSize: fs, ink: theme.palette.ink, glow: theme.palette.glow)
+            MemoTextView(model: model, fontSize: fs, ink: ink, glow: glow)
                 .frame(width: w)
             if model.text.isEmpty {
                 Text("波に想いを綴ってください...")
                     .font(.system(size: fs).italic())
-                    .foregroundStyle(ink.opacity(0.55))
+                    .foregroundStyle(inkColor.opacity(0.55))
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .padding(.top, fs * 0.3)

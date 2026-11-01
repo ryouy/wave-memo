@@ -45,6 +45,17 @@ enum Theme: String, CaseIterable, Identifiable {
     }
 
     var palette: Palette { Palette.of(self) }
+
+    /// 太陽の軌道（楕円）上の位置 φ。東(左)の水平線で昇り、真上を通って、西(右)の水平線へ沈み、夜は地平線の下を回って朝に戻る。
+    /// 切り替えは必ず φ が増える向きに進む。月は太陽の反対側(φ+π)にいる。
+    var phi: Double {
+        switch self {
+        case .morning: Double.pi * 2 - 0.14
+        case .day: Double.pi / 2
+        case .evening: Double.pi + 0.083
+        case .night: Double.pi * 1.3
+        }
+    }
 }
 
 /// 時間帯ごとの色。SeaSimulation が現在値から目標値へ滑らかに補間する。
@@ -59,30 +70,29 @@ struct Palette {
     var sunReflect: RGBA
     var cloud: RGBA // a = 雲の濃さ
     var tint: RGBA // 絵に重ねる色味（a = 強さ）
-    var sunK: Double
-    var sunX: Double
     var sunScale: Double
     var stars: Double
     var foam: Double
 
-    mutating func approach(_ t: Palette, k: Double) {
-        func mix(_ a: RGBA, _ b: RGBA) -> RGBA { a + (b - a) * k }
-        func mixd(_ a: Double, _ b: Double) -> Double { a + (b - a) * k }
-        ink = mix(ink, t.ink)
-        glow = mix(glow, t.glow)
-        for i in sky.indices { sky[i] = mix(sky[i], t.sky[i]) }
-        for i in sand.indices { sand[i] = mix(sand[i], t.sand[i]) }
-        for i in sea.indices { sea[i] = mix(sea[i], t.sea[i]) }
-        sunCore = mix(sunCore, t.sunCore)
-        sunGlow = mix(sunGlow, t.sunGlow)
-        sunReflect = mix(sunReflect, t.sunReflect)
-        cloud = mix(cloud, t.cloud)
-        tint = mix(tint, t.tint)
-        sunK = mixd(sunK, t.sunK)
-        sunX = mixd(sunX, t.sunX)
-        sunScale = mixd(sunScale, t.sunScale)
-        stars = mixd(stars, t.stars)
-        foam = mixd(foam, t.foam)
+    /// 2つの時間帯の色を t(0〜1) で混ぜる。
+    static func blend(_ a: Palette, _ b: Palette, t: Double) -> Palette {
+        func mix(_ x: RGBA, _ y: RGBA) -> RGBA { x + (y - x) * t }
+        func mixd(_ x: Double, _ y: Double) -> Double { x + (y - x) * t }
+        var r = a
+        r.ink = mix(a.ink, b.ink)
+        r.glow = mix(a.glow, b.glow)
+        for i in r.sky.indices { r.sky[i] = mix(a.sky[i], b.sky[i]) }
+        for i in r.sand.indices { r.sand[i] = mix(a.sand[i], b.sand[i]) }
+        for i in r.sea.indices { r.sea[i] = mix(a.sea[i], b.sea[i]) }
+        r.sunCore = mix(a.sunCore, b.sunCore)
+        r.sunGlow = mix(a.sunGlow, b.sunGlow)
+        r.sunReflect = mix(a.sunReflect, b.sunReflect)
+        r.cloud = mix(a.cloud, b.cloud)
+        r.tint = mix(a.tint, b.tint)
+        r.sunScale = mixd(a.sunScale, b.sunScale)
+        r.stars = mixd(a.stars, b.stars)
+        r.foam = mixd(a.foam, b.foam)
+        return r
     }
 
     static func of(_ theme: Theme) -> Palette {
@@ -95,7 +105,7 @@ struct Palette {
                 sea: [c(255, 200, 160, 0.95), c(130, 185, 215, 0.95), c(60, 140, 200, 0.95)],
                 sunCore: c(255, 230, 160), sunGlow: c(255, 190, 110), sunReflect: c(255, 225, 170),
                 cloud: c(255, 226, 214, 0.8), tint: c(255, 205, 170, 0.07),
-                sunK: 0.5, sunX: 0.3, sunScale: 1, stars: 0, foam: 0.6)
+                sunScale: 1, stars: 0, foam: 0.6)
         case .day:
             return Palette(
                 ink: c(61, 74, 92), glow: c(255, 255, 255, 0.7),
@@ -104,7 +114,7 @@ struct Palette {
                 sea: [c(120, 200, 230, 0.95), c(40, 150, 215, 0.95), c(15, 100, 185, 0.95)],
                 sunCore: c(255, 248, 200), sunGlow: c(255, 240, 170), sunReflect: c(255, 255, 255),
                 cloud: c(255, 255, 255, 0.85), tint: c(255, 255, 255, 0),
-                sunK: -3.4, sunX: 0.58, sunScale: 0.6, stars: 0, foam: 0.6)
+                sunScale: 0.6, stars: 0, foam: 0.6)
         case .evening:
             return Palette(
                 ink: c(59, 47, 74), glow: c(255, 255, 255, 0.7),
@@ -113,16 +123,16 @@ struct Palette {
                 sea: [c(236, 140, 100, 0.97), c(120, 100, 170, 0.95), c(48, 98, 190, 0.95)],
                 sunCore: c(255, 210, 120), sunGlow: c(255, 150, 60), sunReflect: c(255, 200, 120),
                 cloud: c(255, 150, 130, 0.65), tint: c(255, 120, 70, 0.16),
-                sunK: 0.3, sunX: 0.66, sunScale: 1, stars: 0, foam: 0.6)
+                sunScale: 1, stars: 0, foam: 0.6)
         case .night:
             return Palette(
                 ink: c(232, 234, 250), glow: c(8, 10, 48, 0.75),
                 sky: [c(5, 8, 30), c(14, 20, 60), c(40, 48, 100), c(84, 90, 146)],
                 sand: [c(58, 62, 100), c(78, 82, 120), c(104, 108, 142)],
                 sea: [c(70, 80, 140, 0.95), c(28, 44, 104, 0.95), c(10, 20, 70, 0.95)],
-                sunCore: c(240, 244, 255), sunGlow: c(150, 170, 255), sunReflect: c(200, 215, 255),
+                sunCore: c(255, 210, 120), sunGlow: c(255, 150, 60), sunReflect: c(255, 200, 120),
                 cloud: c(96, 106, 166, 0.45), tint: c(12, 18, 64, 0.5),
-                sunK: -4.5, sunX: 0.3, sunScale: 0.5, stars: 1, foam: 0.3)
+                sunScale: 1, stars: 1, foam: 0.3)
         }
     }
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PALETTES, THEME_ORDER } from "../themes";
+import Guide from "./Guide";
 
 const ICONS = {
   morning: (
@@ -31,9 +32,21 @@ const ICONS = {
 
 const TITLES = { morning: "朝", day: "昼", evening: "夕", night: "晩" };
 
-export default function Controls({ theme, onChange, art, onArtChange }) {
+function Icon({ children }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+
+/** 右上のボタン類は、ひとつのメニューにまとめる（時間帯・ポップ・全画面・ガイド） */
+export default function Controls({ theme, onChange, auto, onAutoChange, art, onArtChange }) {
+  const [open, setOpen] = useState(false);
+  const [guide, setGuide] = useState(false);
   const [supported, setSupported] = useState(false);
   const [full, setFull] = useState(false);
+  const rootRef = useRef(null);
 
   useEffect(() => {
     setSupported(!!(document.fullscreenEnabled || document.webkitFullscreenEnabled));
@@ -47,6 +60,21 @@ export default function Controls({ theme, onChange, art, onArtChange }) {
     };
   }, []);
 
+  // メニューの外を押す / Esc で閉じる
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (!rootRef.current?.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   const toggleFull = () => {
     const el = document.documentElement;
     if (full) {
@@ -57,58 +85,107 @@ export default function Controls({ theme, onChange, art, onArtChange }) {
   };
 
   return (
-    <div className="top-controls">
-      <div className="glass" role="group" aria-label="時間帯">
-        {THEME_ORDER.map((key) => (
-          <button
-            key={key}
-            type="button"
-            className="icon-btn"
-            aria-pressed={theme === key}
-            aria-label={TITLES[key]}
-            title={TITLES[key]}
-            onClick={() => onChange(key)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              {ICONS[key]}
-            </svg>
-          </button>
-        ))}
-      </div>
-      <div className="glass">
+    <>
+      <div className="top-controls" ref={rootRef}>
         <button
           type="button"
-          className="icon-btn"
-          aria-pressed={art === "pop"}
-          aria-label="ポップなイラストに切り替え"
-          title={art === "pop" ? "ポップ（オン）" : "ポップ（オフ）"}
-          onClick={() => onArtChange(art === "pop" ? "classic" : "pop")}
+          className="glass icon-btn menu-btn"
+          aria-label="メニュー"
+          aria-expanded={open}
+          aria-haspopup="true"
+          onClick={() => setOpen((v) => !v)}
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
-            <path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7L19 15z" />
-          </svg>
+          <Icon>
+            {open ? (
+              <path d="M6 6l12 12M18 6L6 18" />
+            ) : (
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            )}
+          </Icon>
         </button>
-      </div>
-      {supported && (
-        <div className="glass">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={full ? "全画面を終了" : "全画面"}
-            title={full ? "全画面を終了" : "全画面"}
-            onClick={toggleFull}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              {full ? (
-                <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
-              ) : (
-                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+
+        {open && (
+          <div className="menu-panel" role="menu">
+            <div className="menu-themes">
+              {THEME_ORDER.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="menu-btn-i"
+                  aria-pressed={theme === key}
+                  aria-label={TITLES[key]}
+                  title={TITLES[key]}
+                  onClick={() => onChange(key)}
+                >
+                  <Icon>{ICONS[key]}</Icon>
+                </button>
+              ))}
+              <button
+                type="button"
+                className="menu-btn-i"
+                aria-pressed={auto}
+                aria-label="時間帯を順に切り替える"
+                title="時間帯を順に切り替える"
+                onClick={() => onAutoChange(!auto)}
+              >
+                <Icon>
+                  <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+                  <path d="M21 3v5h-5" />
+                </Icon>
+              </button>
+            </div>
+            <div className="menu-actions">
+              <button
+                type="button"
+                className="menu-btn-i"
+                aria-pressed={art === "pop"}
+                aria-label="ポップなイラスト"
+                title="ポップなイラスト"
+                onClick={() => onArtChange(art === "pop" ? "classic" : "pop")}
+              >
+                <Icon>
+                  <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
+                  <path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7L19 15z" />
+                </Icon>
+              </button>
+              {supported && (
+                <button
+                  type="button"
+                  className="menu-btn-i"
+                  aria-label={full ? "全画面を終了" : "全画面"}
+                  title={full ? "全画面を終了" : "全画面"}
+                  onClick={toggleFull}
+                >
+                  <Icon>
+                    {full ? (
+                      <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+                    ) : (
+                      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                    )}
+                  </Icon>
+                </button>
               )}
-            </svg>
-          </button>
-        </div>
-      )}
-    </div>
+              <button
+                type="button"
+                className="menu-btn-i"
+                aria-label="ガイド"
+                title="ガイド"
+                onClick={() => {
+                  setOpen(false);
+                  setGuide(true);
+                }}
+              >
+                <Icon>
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8" />
+                  <path d="M12 17h.01" />
+                </Icon>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      {guide && <Guide onClose={() => setGuide(false)} />}
+    </>
   );
 }

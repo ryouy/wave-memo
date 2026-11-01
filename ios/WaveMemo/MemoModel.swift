@@ -17,7 +17,11 @@ final class MemoModel: ObservableObject {
     @Published var focusToken = 0
 
     weak var textView: UITextView?
+    /// 「言葉を海へ」で飛ばす言葉（行ごと）・出発点（画面座標）・文字サイズを、景色に渡す
+    var onSendWords: (([String], CGPoint, CGFloat) -> Void)?
     private var fading = false
+    /// 送信などで途中の「さらう」を取り消すための世代番号（古いタイマーが、新しく書いた文字を消さないように）
+    private var fadeToken = 0
 
     init() {
         #if DEBUG
@@ -35,6 +39,37 @@ final class MemoModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 30_000_000)
             withAnimation(.easeOut(duration: liftDuration)) { self.lift = 0 }
         }
+    }
+
+    var canSend: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// 入力欄の言葉を、水平線の近くへ飛ばして、入力欄をきれいにする。
+    func sendToSea() {
+        guard canSend, let tv = textView else { return }
+        tv.unmarkText()
+        let ns = tv.text as NSString
+        var lines: [String] = []
+        let lm = tv.layoutManager
+        let glyphs = lm.numberOfGlyphs
+        if glyphs > 0 {
+            lm.enumerateLineFragments(forGlyphRange: NSRange(location: 0, length: glyphs)) { _, _, _, glyphRange, _ in
+                let cr = lm.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+                lines.append(ns.substring(with: cr).replacingOccurrences(of: "\n", with: ""))
+            }
+        }
+        while let last = lines.last, last.trimmingCharacters(in: .whitespaces).isEmpty { lines.removeLast() }
+        while let first = lines.first, first.trimmingCharacters(in: .whitespaces).isEmpty { lines.removeFirst() }
+        let frame = tv.convert(tv.bounds, to: nil)
+        let center = CGPoint(x: frame.midX, y: frame.midY)
+        let fs = tv.font?.pointSize ?? 24
+        onSendWords?(Array(lines.prefix(8)), center, fs)
+
+        tv.textStorage.replaceCharacters(in: NSRange(location: 0, length: ns.length), with: "")
+        text = ""
+        fadeToken += 1
+        fadeCount = 0
+        fadeProgress = 0
+        fading = false
     }
 
     /// 波先(reachY)より上にある行を、上から順にさらう。
@@ -63,17 +98,19 @@ final class MemoModel: ObservableObject {
         }
 
         fading = true
+        fadeToken += 1
+        let token = fadeToken
         fadeCount = count
         fadeProgress = 0
         let start = Date()
         Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
             MainActor.assumeIsolated {
-                guard let self else { timer.invalidate(); return }
+                guard let self, token == self.fadeToken else { timer.invalidate(); return }
                 let p = min(1, Date().timeIntervalSince(start) / fadeDuration)
                 self.fadeProgress = p
                 if p >= 1 {
                     timer.invalidate()
-                    self.finishFade(count)
+                    self.finishFade(count, token: token)
                 }
             }
         }
@@ -81,7 +118,8 @@ final class MemoModel: ObservableObject {
 
     /// 薄くなった行を実際に消す。日本語入力の変換中(markedText)は文字を差し替えられないので、確定するまで待つ。
     /// （待たずに model.text だけ書き換えると、確定時に古い文字が戻ってしまう）
-    private func finishFade(_ count: Int) {
+    private func finishFade(_ count: Int, token: Int) {
+        guard token == fadeToken else { return }
         guard let tv = textView else {
             let ns = text as NSString
             text = ns.substring(from: min(count, ns.length))
@@ -89,7 +127,7 @@ final class MemoModel: ObservableObject {
             return
         }
         if tv.markedTextRange != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.finishFade(count) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.finishFade(count, token: token) }
             return
         }
         let n = min(count, (tv.text as NSString).length)
