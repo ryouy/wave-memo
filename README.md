@@ -1,96 +1,48 @@
-
-
 # Wave Memo
 
 > **Text should not always remain.**
+> 言葉は、波に消える。
 
-Wave Memo is a small experiment in disappearance.
+書いた言葉を、波がさらっていくメモです。保存はされません。
 
-Inspired by waves erasing writing from the shore,
-this memo does not keep what you write.
+波打ち際に言葉を書くと、ときどき大きな波が砂浜まで下りてきて、上の行から消していきます。
+残したい言葉は、スクリーンショットで、自分の意思で残します。
 
-At fixed intervals, a wave arrives.
-The top line fades.
-Then another.
-Until nothing remains.
+**[ブラウザで試す](https://wave-memo-vlgs.vercel.app/)**
 
-It is not a tool for saving.
-It is a space for letting go.
+## できること
 
----
+- 書いた言葉は、波にさらわれて消える（保存・履歴・元に戻す機能はありません）
+- 「言葉を海へ」で、言葉を水平線のほうへ飛ばして、入力欄をきれいにする
+- 朝・昼・夕・晩の景色。切り替えると、太陽が沈んで月が昇る
+- イラストのセットを4種類から選べる（ヴィンテージ / カラフル / 絵画風 / 輪郭つきポップ）
+- ガイド、全画面（ウェブ版のみ）、スマホのキーボードに合わせた表示
 
-[Try here!](https://wave-memo-vlgs.vercel.app/)
+## 開発
 
-## Statement
+### ウェブ版（Next.js）
 
-Digital systems are built for permanence.
+```bash
+npm install
+npm run dev     # http://localhost:3000
+```
 
-Everything is stored.
-Everything is retrievable.
-Nothing truly disappears.
+### iOS 版（SwiftUI）
 
-Wave Memo resists that assumption.
+`ios/WaveMemo.xcodeproj` を Xcode 16 以降で開いて、iPhone / iPad（iOS 17 以降）で実行します。
+実機で動かすときは、Signing & Capabilities で自分の Team を選んでください。
 
-Here, writing is temporary.
-Time is part of the interface.
-Erasure is not an error — it is the behavior.
+## 構成
 
-The memo is not a container.
-It is a tide.
+| 場所 | 内容 |
+| --- | --- |
+| `app/` | ウェブ版（景色は p5 のキャンバス、入力欄は React） |
+| `ios/` | iOS 版（景色は SwiftUI の Canvas、入力欄は UITextView） |
+| `public/art/` | イラストのセット（`classic` `pop` `painted` `cartoon`） |
+| `design/` | スプラッシュ画像の生成スクリプト |
 
----
+イラストを差し替えるときは、`public/art/<セット名>/` と `ios/WaveMemo/Assets.xcassets/<セット名>-*.imageset` の両方を更新します。
 
-## A Quiet Choice
+## 作りについて
 
-When you write, you stand at the shore.
-
-You may let the waves take your words.
-Or, if a thought feels worth keeping,
-you must make a deliberate gesture —
-a screenshot.
-
-There is no save button.
-No archive.
-No history.
-
-**Impermanence is the default.**
-**Preservation requires intention.**
-
----
-
-## Experience
-
-* Lines fade, one by one
-* Disappearance is visible, gradual
-* No undo
-* No persistence
-
-The system does not accumulate.
-It subtracts.
-
----
-
-
-
-## Technical Note
-
-Built with:
-
-* Next.js
-* React
-* TypeScript
-* CSS animations
-
-There is no database.
-Nothing is stored.
-
----
-
-## iOS app (SwiftUI)
-
-The same world, written natively in Swift. The web version stays as it is.
-
-- Open `ios/WaveMemo.xcodeproj` in Xcode 16+ and run on an iPhone or iPad (iOS 17+).
-- Sky, sea, waves, birds, clouds and the shore are drawn with SwiftUI `Canvas`; the memo is a `UITextView`
-  that finds the wrapped lines the wave reaches and fades them away.
-- Morning / day / evening / night and the classic / pop illustration sets are switched from the top-right controls.
+データベースはなく、何も保存しません。入力した言葉は端末の外へ送られません。

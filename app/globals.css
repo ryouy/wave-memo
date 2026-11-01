@@ -280,6 +280,10 @@ body {
   transition: background 0.25s, color 0.25s;
 }
 
+a.menu-btn-i {
+  text-decoration: none;
+}
+
 .menu-btn-i:hover {
   background: rgba(255, 255, 255, 0.12);
 }

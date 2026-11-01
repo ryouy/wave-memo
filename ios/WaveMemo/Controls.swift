@@ -74,6 +74,13 @@ struct Controls: View {
 
     private var actionRow: some View {
         HStack(spacing: 4) {
+            Link(destination: URL(string: "https://github.com/ryouy/wave-memo")!) {
+                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
+                    .foregroundStyle(.white)
+            }
+            .accessibilityLabel("GitHub")
             iconButton("questionmark.circle", selected: false, label: "ガイド", group: "guide") { onGuide() }
         }
     }

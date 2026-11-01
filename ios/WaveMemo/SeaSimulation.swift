@@ -20,6 +20,18 @@ private struct Geo {
     let near: CGFloat
     let t: Double
 
+    /// 波の縁をたどる x の位置。0 から右端の少し外まで。往復で同じ点を使うので、どの画面幅でも左端(x=0)まで届く
+    var xs: [CGFloat] {
+        var r: [CGFloat] = []
+        var x: CGFloat = 0
+        while x < W + 6 {
+            r.append(x)
+            x += 6
+        }
+        r.append(x)
+        return r
+    }
+
     func waveY(_ x: CGFloat) -> CGFloat {
         baseY + sin(x * freq + t * 0.55) * amp + sin(x * freq * 2.5 + t * 0.8) * amp * 0.33
     }
@@ -520,11 +532,7 @@ final class SeaSimulation {
         var p = Path()
         p.move(to: CGPoint(x: 0, y: g.horizonY))
         p.addLine(to: CGPoint(x: g.W, y: g.horizonY))
-        var x = g.W
-        while x >= 0 {
-            p.addLine(to: CGPoint(x: x, y: g.waveY(x)))
-            x -= 6
-        }
+        for x in g.xs.reversed() { p.addLine(to: CGPoint(x: x, y: g.waveY(x))) }
         p.closeSubpath()
         let stops: [Gradient.Stop] = [
             .init(color: color(pal.sea[0]), location: 0),
@@ -671,16 +679,13 @@ final class SeaSimulation {
         let wetH = wetBottom - frontBottom
         guard wetH > 2 else { return wetH }
         var p = Path()
-        var x: CGFloat = 0
-        while x <= g.W + 6 {
+        let xs = g.xs
+        for (i, x) in xs.enumerated() {
             let pt = CGPoint(x: x, y: g.waveY(x) + g.foamHeight * 0.5)
-            if x == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
-            x += 6
+            if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
         }
-        x = g.W + 6
-        while x >= 0 {
+        for x in xs.reversed() {
             p.addLine(to: CGPoint(x: x, y: wetBottom + CGFloat(sin(Double(x) * 0.02 + t * 0.3)) * 5))
-            x -= 6
         }
         p.closeSubpath()
         let a = 0.1 * Double(min(1, wetH / (g.H * 0.05)))
@@ -690,17 +695,14 @@ final class SeaSimulation {
 
     private func drawFoam(_ ctx: inout GraphicsContext, _ g: Geo) {
         var p = Path()
-        var x: CGFloat = 0
-        while x <= g.W + 6 {
+        let xs = g.xs
+        for (i, x) in xs.enumerated() {
             let pt = CGPoint(x: x, y: g.waveY(x))
-            if x == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
-            x += 6
+            if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
         }
-        x = g.W + 6
-        while x >= 0 {
+        for x in xs.reversed() {
             let wob = CGFloat(sin(Double(x) * 0.015 - t * 0.55)) * 5
             p.addLine(to: CGPoint(x: x, y: g.waveY(x) + g.foamHeight + wob))
-            x -= 6
         }
         p.closeSubpath()
         ctx.fill(p, with: .color(.white.opacity(pal.foam)))

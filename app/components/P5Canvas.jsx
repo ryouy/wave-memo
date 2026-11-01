@@ -481,6 +481,16 @@ export default function P5Canvas({ theme, art }) {
           const freq = 0.014 - near * 0.006;
           const waveY = (x) =>
             baseY + Math.sin(x * freq + t * 0.55) * amp + Math.sin(x * freq * 2.5 + t * 0.8) * amp * 0.33;
+          // 波の縁をたどる x の位置。0 から右端の少し外まで。往復で同じ点を使うので、どの画面幅でも左端(x=0)まで届く
+          const xs = [];
+          {
+            let x = 0;
+            while (x < W + 6) {
+              xs.push(x);
+              x += 6;
+            }
+            xs.push(x);
+          }
 
           // ---- 空と砂浜 ----
           const sky = ctx.createLinearGradient(0, 0, 0, horizonY);
@@ -622,7 +632,7 @@ export default function P5Canvas({ theme, art }) {
           ctx.beginPath();
           ctx.moveTo(0, horizonY);
           ctx.lineTo(W, horizonY);
-          for (let x = W; x >= 0; x -= 6) ctx.lineTo(x, waveY(x));
+          for (let i = xs.length - 1; i >= 0; i--) ctx.lineTo(xs[i], waveY(xs[i]));
           ctx.closePath();
           ctx.fill();
 
@@ -758,13 +768,13 @@ export default function P5Canvas({ theme, art }) {
           if (wetH > 2) {
             ctx.fillStyle = `rgba(80, 60, 72, ${0.1 * Math.min(1, wetH / (H * 0.05))})`;
             ctx.beginPath();
-            for (let x = 0; x <= W + 6; x += 6) {
+            xs.forEach((x, i) => {
               const y0 = waveY(x) + foamHeight * 0.5;
-              if (x === 0) ctx.moveTo(x, y0);
+              if (i === 0) ctx.moveTo(x, y0);
               else ctx.lineTo(x, y0);
-            }
-            for (let x = W + 6; x >= 0; x -= 6) {
-              ctx.lineTo(x, wetBottom + Math.sin(x * 0.02 + t * 0.3) * 5);
+            });
+            for (let i = xs.length - 1; i >= 0; i--) {
+              ctx.lineTo(xs[i], wetBottom + Math.sin(xs[i] * 0.02 + t * 0.3) * 5);
             }
             ctx.closePath();
             ctx.fill();
@@ -773,11 +783,12 @@ export default function P5Canvas({ theme, art }) {
           // ---- 白い泡 ----
           ctx.fillStyle = `rgba(255, 255, 255, ${pal.foam})`;
           ctx.beginPath();
-          for (let x = 0; x <= W + 6; x += 6) {
-            if (x === 0) ctx.moveTo(x, waveY(x));
+          xs.forEach((x, i) => {
+            if (i === 0) ctx.moveTo(x, waveY(x));
             else ctx.lineTo(x, waveY(x));
-          }
-          for (let x = W + 6; x >= 0; x -= 6) {
+          });
+          for (let i = xs.length - 1; i >= 0; i--) {
+            const x = xs[i];
             const wob = Math.sin(x * 0.015 - t * 0.55) * 5;
             ctx.lineTo(x, waveY(x) + foamHeight + wob);
           }
