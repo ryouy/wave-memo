@@ -675,8 +675,11 @@ export default function P5Canvas({ theme, art }) {
             ctx.setLineDash([]);
           }
 
-          // 水平線
-          ctx.strokeStyle = "rgba(255, 220, 170, 0.8)";
+          // 水平線: 時間帯の水平線の空の色を、少し明るくしたもの（夕は暖色、昼は白っぽい青、夜はうす紫）
+          ctx.strokeStyle = rgba(
+            pal.sky[3].map((v) => v + (255 - v) * 0.35),
+            0.75,
+          );
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           ctx.moveTo(0, horizonY);

@@ -593,7 +593,10 @@ final class SeaSimulation {
         var p = Path()
         p.move(to: CGPoint(x: 0, y: g.horizonY))
         p.addLine(to: CGPoint(x: g.W, y: g.horizonY))
-        ctx.stroke(p, with: .color(Color(red: 1, green: 0.86, blue: 0.67, opacity: 0.8)), lineWidth: 1.5)
+        // 時間帯の水平線の空の色を、少し明るくしたもの（夕は暖色、昼は白っぽい青、夜はうす紫）
+        let h = pal.sky[3]
+        let line = RGBA(h.x + (1 - h.x) * 0.35, h.y + (1 - h.y) * 0.35, h.z + (1 - h.z) * 0.35, 1)
+        ctx.stroke(p, with: .color(color(line, alpha: 0.75)), lineWidth: 1.5)
     }
 
     // MARK: - 船・濡れた砂・泡
