@@ -46,3 +46,6 @@ next-env.d.ts
 xcuserdata/
 *.xcuserstate
 DerivedData/
+
+# Appetize 用のビルド（build-demo/build.sh で作り直せる）
+build-demo/*.zip

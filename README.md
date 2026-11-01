@@ -10,6 +10,8 @@
 
 **[ブラウザで試す](https://wave-memo-vlgs.vercel.app/)**
 
+**[iOS のシミュレーターで試す（Appetize）](https://appetize.io/app/b_yhllib3pg5o26rqxy2z4rlibdm)**
+
 ## できること
 
 - 書いた言葉は、波にさらわれて消える（保存・履歴・元に戻す機能はありません）
