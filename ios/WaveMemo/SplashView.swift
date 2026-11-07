@@ -30,6 +30,14 @@ struct SplashView: View {
                     .position(x: geo.size.width / 2, y: geo.size.height * 0.322)
                     .opacity(appeared ? 1 : 0)
                 }
+
+                Text(L("波のメモ帳", "Text should not always remain."))
+                    .font(.system(size: min(geo.size.width * 0.036, 16)))
+                    .tracking(1.6)
+                    .foregroundStyle(Color(red: 1, green: 0.965, blue: 0.925).opacity(0.9))
+                    .shadow(color: Color(red: 1, green: 0.75, blue: 0.58).opacity(0.5), radius: 8)
+                    .position(x: geo.size.width / 2, y: geo.size.height * 0.322 + min(geo.size.width * 0.095, 64) * 0.95)
+                    .opacity(appeared ? 1 : 0)
             }
         }
         .ignoresSafeArea()

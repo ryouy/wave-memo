@@ -74,7 +74,7 @@ struct ContentView: View {
                         Haptics.tap()
                         memo.sendToSea()
                     } label: {
-                        Label("言葉を海へ", systemImage: "paperplane")
+                        Label(L("言葉を海へ", "Send to the sea"), systemImage: "paperplane")
                             .font(.system(size: 14.5))
                             .foregroundStyle(.white)
                             .shadow(color: .black.opacity(0.35), radius: 2, y: 1)

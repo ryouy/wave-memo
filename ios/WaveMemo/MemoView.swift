@@ -16,7 +16,7 @@ struct MemoView: View {
             MemoTextView(model: model, fontSize: fs, ink: ink, glow: glow)
                 .frame(width: w)
             if model.text.isEmpty {
-                Text("波に想いを綴ってください...")
+                Text(L("波に想いを綴ってください...", "Write your thoughts to the waves..."))
                     .font(.system(size: fs).italic())
                     .foregroundStyle(inkColor.opacity(0.55))
                     .lineLimit(1)
@@ -57,7 +57,7 @@ struct MemoTextView: UIViewRepresentable {
         tv.smartQuotesType = .no
         tv.smartDashesType = .no
         tv.delegate = context.coordinator
-        tv.accessibilityLabel = "メモ"
+        tv.accessibilityLabel = L("メモ", "Memo")
         tv.text = model.text
         model.textView = tv
         return tv

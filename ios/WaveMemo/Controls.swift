@@ -23,7 +23,7 @@ struct Controls: View {
                     .background(.ultraThinMaterial, in: Circle())
                     .overlay(Circle().strokeBorder(.white.opacity(0.35), lineWidth: 1))
             }
-            .accessibilityLabel("メニュー")
+            .accessibilityLabel(L("メニュー", "Menu"))
 
             if open {
                 panel
@@ -43,7 +43,7 @@ struct Controls: View {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { theme = t }
                 }
             }
-            iconButton("arrow.triangle.2.circlepath", selected: auto, label: "時間帯を順に切り替える", group: "auto") {
+            iconButton("arrow.triangle.2.circlepath", selected: auto, label: L("時間帯を順に切り替える", "Cycle through times of day"), group: "auto") {
                 auto.toggle()
             }
         }
@@ -81,7 +81,7 @@ struct Controls: View {
                     .foregroundStyle(.white)
             }
             .accessibilityLabel("GitHub")
-            iconButton("questionmark.circle", selected: false, label: "ガイド", group: "guide") { onGuide() }
+            iconButton("questionmark.circle", selected: false, label: L("ガイド", "Guide"), group: "guide") { onGuide() }
         }
     }
 

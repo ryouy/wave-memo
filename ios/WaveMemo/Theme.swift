@@ -30,10 +30,10 @@ enum ArtStyle: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .classic: "ヴィンテージ"
-        case .pop: "カラフル"
-        case .painted: "絵画風"
-        case .cartoon: "輪郭つきポップ"
+        case .classic: L("ヴィンテージ", "Vintage")
+        case .pop: L("カラフル", "Colorful")
+        case .painted: L("絵画風", "Painted")
+        case .cartoon: L("輪郭つきポップ", "Outlined pop")
         }
     }
 
@@ -48,10 +48,10 @@ enum Theme: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .morning: "朝"
-        case .day: "昼"
-        case .evening: "夕"
-        case .night: "晩"
+        case .morning: L("朝", "Morning")
+        case .day: L("昼", "Day")
+        case .evening: L("夕", "Evening")
+        case .night: L("晩", "Night")
         }
     }
 
