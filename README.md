@@ -8,7 +8,7 @@
 波打ち際に言葉を書くと、ときどき大きな波が砂浜まで下りてきて、上の行から消していきます。
 残したい言葉は、スクリーンショットで、自分の意思で残します。
 
-**[ブラウザで試す](https://wave-memo-vlgs.vercel.app/)**
+**[ブラウザで試す](https://wave-memo.vercel.app/)**
 
 **[iOS のシミュレーターで試す（Appetize）](https://appetize.io/app/b_yhllib3pg5o26rqxy2z4rlibdm)**
 
